@@ -4,6 +4,7 @@
         "**/.vs": true
     },
     "files.associations": {
-        "time.h": "c"
+        "time.h": "c",
+        "random": "c"
     }
 }

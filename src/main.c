@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <SDL3/SDL.h>
+#include <stb_image/stb_image.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <math.h>
@@ -64,19 +65,41 @@ struct {
 
 typedef struct {
     i32 x, y;
-} vec2i;
+} Vec2i;
 
 typedef struct {
     i32 x, y, z;
-} vec3i;
+} Vec3i;
 
 typedef struct {
     f32 x, y;
-} vec2f;
+} Vec2f;
 
 typedef struct {
     f32 x, y, z;
-} vec3f;
+} Vec3f;
+
+typedef struct {
+    Vec3f pos;
+    Vec2f uv;
+} Vertex;
+
+typedef struct {
+    Vec3i pos;
+    Vec2f uv;
+} RawVertex;
+
+typedef enum {
+    FORMAT_RGB,
+    FORMAT_RGBA
+} TextureFormat;
+
+typedef struct {
+    u8 *data;
+    TextureFormat format;
+    u32 width;
+    u32 height;
+} Texture;
 
 static u32 max(i32 a, i32 b, i32 c) {
     if(a >= b && a >= c) {
@@ -102,8 +125,8 @@ static u32 min(i32 a, i32 b, i32 c) {
     return c;
 }
 
-static vec3i ndc_to_pixels(vec3f ndc) {
-    return (vec3i) {
+static Vec3i ndc_to_pixels(Vec3f ndc) {
+    return (Vec3i) {
         ((ndc.x + 1.0f) / 2.0f) * (SCREEN_WIDTH),
         (1.0f - ((ndc.y + 1.0f) / 2.0f)) * (SCREEN_HEIGHT),
         ndc.z * DEPTH_PRECISION
@@ -137,6 +160,34 @@ static void present() {
     SDL_RenderPresent(state.renderer);
 }
 
+static Texture load_texture(const char *path, TextureFormat format) {
+    stbi_set_flip_vertically_on_load(true);
+
+    u8 *data;
+    i32 width, height, channels;
+
+    if(format == FORMAT_RGB) {
+        data = stbi_load(path, &width, &height, &channels, 3);
+    } else if(format == FORMAT_RGBA) {
+        data = stbi_load(path, &width, &height, &channels, 4);
+    }
+
+    if(!data) {
+        fprintf(stderr, "Failed to load image from path %s\n", path);
+    }
+
+    Texture texture;
+    texture.width = width;
+    texture.height = height;
+    texture.data = data;
+    texture.format = format;
+    return texture;
+}
+
+static void destroy_texture(Texture *texture) {
+    stbi_image_free(texture->data);
+}
+
 static void draw_rect_raw(u32 x1, u32 y1, u32 x2, u32 y2, u32 color) {
     for(u32 x = x1; x <= x2; x++) {
         for(u32 y = y1; y <= y2; y++) {
@@ -145,9 +196,9 @@ static void draw_rect_raw(u32 x1, u32 y1, u32 x2, u32 y2, u32 color) {
     }
 }
 
-static void draw_rect(vec3f v1, vec3f v2, u32 color) {
-    vec3i v1_pixels = ndc_to_pixels(v1);
-    vec3i v2_pixels = ndc_to_pixels(v2);
+static void draw_rect(Vec3f v1, Vec3f v2, u32 color) {
+    Vec3i v1_pixels = ndc_to_pixels(v1);
+    Vec3i v2_pixels = ndc_to_pixels(v2);
 
     draw_rect_raw(
         v1_pixels.x,
@@ -210,9 +261,9 @@ static void draw_line_raw(u32 x1, u32 y1, u32 x2, u32 y2, u32 color) {
     }
 }
 
-static void draw_line(vec3f v1, vec3f v2, u32 color) {
-    vec3i v1_pixels = ndc_to_pixels(v1);
-    vec3i v2_pixels = ndc_to_pixels(v2);
+static void draw_line(Vec3f v1, Vec3f v2, u32 color) {
+    Vec3i v1_pixels = ndc_to_pixels(v1);
+    Vec3i v2_pixels = ndc_to_pixels(v2);
 
     draw_line_raw(
         v1_pixels.x,
@@ -222,11 +273,25 @@ static void draw_line(vec3f v1, vec3f v2, u32 color) {
         color);
 }
 
-static i32 edge_function(vec2i a, vec2i b, vec2i c) {
+static i32 edge_function(Vec2i a, Vec2i b, Vec2i c) {
     return ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x));
 }
 
-static void draw_triangle_raw(i32 x1, i32 y1, i32 z1, i32 x2, i32 y2, i32 z2, i32 x3, i32 y3, i32 z3) {
+static void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
+    i32 x1 = vertices[0].pos.x;
+    i32 x2 = vertices[1].pos.x;
+    i32 x3 = vertices[2].pos.x;
+    i32 y1 = vertices[0].pos.y;
+    i32 y2 = vertices[1].pos.y;
+    i32 y3 = vertices[2].pos.y;
+    i32 z1 = vertices[0].pos.z;
+    i32 z2 = vertices[1].pos.z;
+    i32 z3 = vertices[2].pos.z;
+
+    Vec2f uv1 = vertices[0].uv;
+    Vec2f uv2 = vertices[1].uv;
+    Vec2f uv3 = vertices[2].uv;
+
     i32 min_x = min(x1, x2, x3);
     i32 min_y = min(y1, y2, y3);
 
@@ -241,12 +306,12 @@ static void draw_triangle_raw(i32 x1, i32 y1, i32 z1, i32 x2, i32 y2, i32 z2, i3
     SDL_clamp(z2, 0, DEPTH_PRECISION);
     SDL_clamp(z3, 0, DEPTH_PRECISION);
 
-    i32 area = (max_x - min_x) * (max_y - min_y);
+    i32 area = ((max_x - min_x) * (max_y - min_y)) >> 1;
 
     i32 e_row1, e_row2, e_row3;
-    e_row1 = edge_function((vec2i){x1, y1}, (vec2i){x3, y3}, (vec2i){min_x, min_y});
-    e_row2 = edge_function((vec2i){x3, y3}, (vec2i){x2, y2}, (vec2i){min_x, min_y});
-    e_row3 = edge_function((vec2i){x2, y2}, (vec2i){x1, y1}, (vec2i){min_x, min_y});
+    e_row1 = edge_function((Vec2i){x1, y1}, (Vec2i){x3, y3}, (Vec2i){min_x, min_y});
+    e_row2 = edge_function((Vec2i){x3, y3}, (Vec2i){x2, y2}, (Vec2i){min_x, min_y});
+    e_row3 = edge_function((Vec2i){x2, y2}, (Vec2i){x1, y1}, (Vec2i){min_x, min_y});
 
     for(u32 y = min_y; y < max_y; y++) {
         i32 e1 = e_row1;
@@ -264,10 +329,32 @@ static void draw_triangle_raw(i32 x1, i32 y1, i32 z1, i32 x2, i32 y2, i32 z2, i3
                 v = (f32) area_12 / (f32) area;
                 w = (f32) area_31 / (f32) area;
 
-                u32 c = 0x000000FF;
-                c |= gammas[((u32) (u * 512.0f))] << 8;
-                c |= gammas[((u32) (v * 512.0f))] << 16;
-                c |= gammas[((u32) (w * 512.0f))] << 24;
+                // Barycentric uv coordinates
+                Vec2f tex_coords = {
+                    u * uv1.x + v * uv3.x + w * uv2.x,
+                    u * uv1.y + v * uv3.y + w * uv2.y
+                };
+
+                u32 index =
+                    (u32)(tex_coords.x * texture->width)
+                    + (u32)(tex_coords.y * texture->height) * texture->width;
+
+                u32 color = 0x000000FF;
+
+                if(texture->format == FORMAT_RGBA) {
+                    index *= 4;
+
+                    color |= ((u32)(texture->data)[index]) << 8; // Red
+                    color |= ((u32)(texture->data)[index + 1]) << 16; // Green
+                    color |= ((u32)(texture->data)[index + 2]) << 24; // Blue
+                    color |= ((u32)(texture->data)[index + 3]); // Alpha
+                } else if(texture->format == FORMAT_RGB) {
+                    index *= 3;
+
+                    color |= ((u32)(texture->data)[index]) << 8; // Red
+                    color |= ((u32)(texture->data)[index + 1]) << 16; // Green
+                    color |= ((u32)(texture->data)[index + 2]) << 24; // Blue
+                }
 
                 if(state.depth_test) {
                     u32 depth =
@@ -277,10 +364,10 @@ static void draw_triangle_raw(i32 x1, i32 y1, i32 z1, i32 x2, i32 y2, i32 z2, i3
                     u32 *depth_ptr = state.depth_buffer + (y * SCREEN_WIDTH + x);
                     if(*depth_ptr <= depth) {
                         *depth_ptr = depth;
-                        SET_PIXEL(x, y, c);
+                        SET_PIXEL(x, y, color);
                     }
                 } else {
-                    SET_PIXEL(x, y, c);
+                    SET_PIXEL(x, y, color);
                 }
             }
 
@@ -295,21 +382,25 @@ static void draw_triangle_raw(i32 x1, i32 y1, i32 z1, i32 x2, i32 y2, i32 z2, i3
     }
 }
 
-static void draw_triangle(vec3f v1, vec3f v2, vec3f v3, u32 color) {
-    vec3i v1_pixels = ndc_to_pixels(v1);
-    vec3i v2_pixels = ndc_to_pixels(v2);
-    vec3i v3_pixels = ndc_to_pixels(v3);
+static void draw_triangle(const Vertex *vertices, const Texture *texture) {
+    RawVertex raw_vertices[3];
+
+    raw_vertices[0] = (RawVertex) {
+        .pos = ndc_to_pixels(vertices[0].pos),
+        .uv = vertices[0].uv
+    };
+    raw_vertices[1] = (RawVertex) {
+        .pos = ndc_to_pixels(vertices[1].pos),
+        .uv = vertices[1].uv
+    };
+    raw_vertices[2] = (RawVertex) {
+        .pos = ndc_to_pixels(vertices[2].pos),
+        .uv = vertices[2].uv
+    };
 
     draw_triangle_raw(
-        v1_pixels.x,
-        v1_pixels.y,
-        v1_pixels.z,
-        v2_pixels.x,
-        v2_pixels.y,
-        v2_pixels.z,
-        v3_pixels.x,
-        v3_pixels.y,
-        v3_pixels.z);
+        raw_vertices,
+        texture);
 }
 
 static void cleanup() {
@@ -353,6 +444,8 @@ int main() {
     memset(state.depth_buffer, 0, sizeof(state.depth_buffer));
     state.depth_test = true;
 
+    Texture texture = load_texture("resources/texture.png", FORMAT_RGBA);
+
     u32 counter = 0;
 
     while(!state.quit) {
@@ -367,11 +460,40 @@ int main() {
 
         long start = ns_now();
 
+        Vertex vertices[3];
+
+        vertices[0] = (Vertex) {
+            (Vec3f) {-1.0f, 1.0f, 0.0f},
+            (Vec2f) {0.0f, 1.0f}
+        };
+        vertices[1] = (Vertex) {
+            (Vec3f){1.0f, 1.0f, 0.0f},
+            (Vec2f) {1.0f, 1.0f}
+        };
+        vertices[2] = (Vertex) {
+            (Vec3f){1.0f, -1.0f, 0.0f},
+            (Vec2f) {1.0f, 0.0f}
+        };
+        vertices[3] = (Vertex) {
+            (Vec3f){1.0f, -1.0f, 0.0f},
+            (Vec2f) {1.0f, 0.0f}
+        };
+        vertices[4] = (Vertex) {
+            (Vec3f){-1.0f, -1.0f, 0.0f},
+            (Vec2f) {0.0f, 0.0f}
+        };
+        vertices[5] = (Vertex) {
+            (Vec3f) {-1.0f, 1.0f, 0.0f},
+            (Vec2f) {0.0f, 1.0f}
+        };
+
         draw_triangle(
-            (vec3f){0.0f, 1.0f, 1.0f},
-            (vec3f){1.0f, -1.0f, 1.0f},
-            (vec3f){-1.0f, -1.0f, 1.0f},
-            0x0000FFFF);
+            &vertices[0],
+            &texture);
+
+        draw_triangle(
+            &vertices[3],
+            &texture);
 
         long end = ns_now();
         
