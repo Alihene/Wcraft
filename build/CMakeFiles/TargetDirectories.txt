@@ -1,8 +1,0 @@
-/home/alex/Desktop/Programming/software-renderer/build/CMakeFiles/software-renderer.dir
-/home/alex/Desktop/Programming/software-renderer/build/CMakeFiles/edit_cache.dir
-/home/alex/Desktop/Programming/software-renderer/build/CMakeFiles/rebuild_cache.dir
-/home/alex/Desktop/Programming/software-renderer/build/thirdparty/SDL/CMakeFiles/SDL3-shared.dir
-/home/alex/Desktop/Programming/software-renderer/build/thirdparty/SDL/CMakeFiles/SDL3_test.dir
-/home/alex/Desktop/Programming/software-renderer/build/thirdparty/SDL/CMakeFiles/uninstall.dir
-/home/alex/Desktop/Programming/software-renderer/build/thirdparty/SDL/CMakeFiles/edit_cache.dir
-/home/alex/Desktop/Programming/software-renderer/build/thirdparty/SDL/CMakeFiles/rebuild_cache.dir

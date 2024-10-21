@@ -1,1 +1,0 @@
-/usr/bin/gcc -g "CMakeFiles/software-renderer.dir/src/main.c.o" -o software-renderer  -Wl,-rpath,/home/alex/Desktop/Programming/software-renderer/build/thirdparty/SDL thirdparty/SDL/libSDL3.so.0.1.2 -lm 
