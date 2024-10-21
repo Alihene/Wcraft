@@ -5,10 +5,10 @@
 #include <math.h>
 #include <time.h>
 
-#define SCREEN_WIDTH 854
-#define SCREEN_HEIGHT 480
+#define SCREEN_WIDTH 427
+#define SCREEN_HEIGHT 240
 
-#define SET_PIXEL(x, y, color) if(x > 0 && y > 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) state.pixels[y * SCREEN_WIDTH + x] = color;
+#define SET_PIXEL(x, y, color) if(x >= 0 && y >= 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) state.pixels[y * SCREEN_WIDTH + x] = color;
 
 #define NS_PER_SECOND 1000000000
 
@@ -65,24 +65,24 @@ typedef struct {
     f32 x, y;
 } vec2f;
 
-static u32 max(u32 a, u32 b, u32 c) {
-    if(a > b && a > c) {
+static u32 max(i32 a, i32 b, i32 c) {
+    if(a >= b && a >= c) {
         return a;
     }
 
-    if(b > a && b > c) {
+    if(b >= a && b >= c) {
         return b;
     }
 
     return c;
 }
 
-static u32 min(u32 a, u32 b, u32 c) {
-    if(a < b && a < c) {
+static u32 min(i32 a, i32 b, i32 c) {
+    if(a <= b && a <= c) {
         return a;
     }
 
-    if(b < a && b < c) {
+    if(b <= a && b <= c) {
         return b;
     }
 
@@ -216,12 +216,12 @@ static void draw_triangle_raw(i32 x1, i32 y1, i32 x2, i32 y2, i32 x3, i32 y3, u3
     i32 max_x = max(x1, x2, x3);
     i32 max_y = max(y1, y2, y3);
 
-    i32 area = (max_x - min_x) * (max_y - min_y);
-
     SDL_clamp(min_x, 0, SCREEN_WIDTH);
     SDL_clamp(max_x, 0, SCREEN_WIDTH);
     SDL_clamp(min_y, 0, SCREEN_HEIGHT);
     SDL_clamp(max_y, 0, SCREEN_HEIGHT);
+
+    i32 area = (max_x - min_x) * (max_y - min_y);
 
     i32 e_row1, e_row2, e_row3;
     e_row1 = edge_function((vec2){x1, y1}, (vec2){x3, y3}, (vec2){min_x, min_y});
@@ -231,18 +231,18 @@ static void draw_triangle_raw(i32 x1, i32 y1, i32 x2, i32 y2, i32 x3, i32 y3, u3
     for(u32 y = min_y; y < max_y; y++) {
         i32 e1 = e_row1;
         i32 e2 = e_row2;
-        i32 e3 = e_row3; 
+        i32 e3 = e_row3;
 
         for(u32 x = min_x; x < max_x; x++) {
             if((e1 >= 0) && (e2 >= 0) && (e3 >= 0)) {
-                i32 area_31 = e1 / 2;
-                i32 area_23 = e2 / 2;
-                i32 area_12 = e3 / 2;
+                i32 area_31 = e1 >> 1;
+                i32 area_23 = e2 >> 1;
+                i32 area_12 = e3 >> 1;
 
                 u32 c = 0x000000FF;
-                c |= gammas[((u8) floor(((f32) area_23 / (f32) area) * 512.0f))] << 8;
-                c |= gammas[((u8) floor(((f32) area_12 / (f32) area) * 512.0f))] << 16;
-                c |= gammas[((u8) floor(((f32) area_31 / (f32) area) * 512.0f))] << 24;
+                c |= gammas[((u32) floor(((f32) area_23 / (f32) area) * 512.0f))] << 8;
+                c |= gammas[((u32) floor(((f32) area_12 / (f32) area) * 512.0f))] << 16;
+                c |= gammas[((u32) floor(((f32) area_31 / (f32) area) * 512.0f))] << 24;
 
                 SET_PIXEL(x, y, c);
             }
@@ -325,8 +325,8 @@ int main() {
 
         long start = ns_now();
 
-        draw_triangle((vec2f){(-1.0f), -1.0f}, (vec2f){0.0f, 1.0f}, (vec2f){1.0f, -1.0f}, 0x0000FFFF);
-        //draw_triangle((vec2f){0.0f, 1.0f}, (vec2f){1.0f, -1.0f}, (vec2f){-1.0f, -1.0f}, 0xFF0000FF);
+        draw_triangle((vec2f){-1.0f, 1.0f}, (vec2f){1.0f, 1.0f}, (vec2f){1.0f, -1.0f}, 0x0000FFFF);
+        draw_triangle((vec2f){1.0f, -1.0f}, (vec2f){-1.0f, -1.0f}, (vec2f){-1.0f, 1.0f}, 0x0000FFFF);
 
         long end = ns_now();
         
