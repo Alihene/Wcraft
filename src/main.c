@@ -278,6 +278,8 @@ static i32 edge_function(Vec2i a, Vec2i b, Vec2i c) {
 }
 
 static void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
+    u64 bitshift_amount = 10;
+
     i32 x1 = vertices[0].pos.x;
     i32 x2 = vertices[1].pos.x;
     i32 x3 = vertices[2].pos.x;
@@ -307,6 +309,8 @@ static void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     SDL_clamp(z3, 0, DEPTH_PRECISION);
 
     i32 area = ((max_x - min_x) * (max_y - min_y)) >> 1;
+    f32 inverse_area = 1.0f / (f32) area;
+    //u64 inverse_area = (1L << 10) / area;
 
     i32 e_row1, e_row2, e_row3;
     e_row1 = edge_function((Vec2i){x1, y1}, (Vec2i){x3, y3}, (Vec2i){min_x, min_y});
@@ -325,14 +329,14 @@ static void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                 i32 area_12 = e3 >> 1;
 
                 f32 u, v, w; // Barycentric coordinates
-                u = (f32) area_23 / (f32) area;
-                v = (f32) area_12 / (f32) area;
-                w = (f32) area_31 / (f32) area;
+                u = (f32) area_23;
+                v = (f32) area_12;
+                w = (f32) area_31;
 
                 // Barycentric uv coordinates
                 Vec2f tex_coords = {
-                    u * uv1.x + v * uv3.x + w * uv2.x,
-                    u * uv1.y + v * uv3.y + w * uv2.y
+                    (u * uv1.x + v * uv3.x + w * uv2.x) * inverse_area,
+                    (u * uv1.y + v * uv3.y + w * uv2.y) * inverse_area
                 };
 
                 u32 index =
@@ -358,9 +362,10 @@ static void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
 
                 if(state.depth_test) {
                     u32 depth =
-                        (u32) floor((u * z1))
-                        + (u32) floor(v * z3)
-                        + (u32) floor(w * z2);
+                        (u32) (u * z1)
+                        + (u32) (v * z3)
+                        + (u32) (w * z2);
+
                     u32 *depth_ptr = state.depth_buffer + (y * SCREEN_WIDTH + x);
                     if(*depth_ptr <= depth) {
                         *depth_ptr = depth;
@@ -444,7 +449,7 @@ int main() {
     memset(state.depth_buffer, 0, sizeof(state.depth_buffer));
     state.depth_test = true;
 
-    Texture texture = load_texture("resources/texture.png", FORMAT_RGBA);
+    Texture texture = load_texture("resources/texture.jpg", FORMAT_RGB);
 
     u32 counter = 0;
 
