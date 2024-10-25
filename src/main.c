@@ -66,26 +66,6 @@ struct {
 } state;
 
 typedef struct {
-    i32 x, y;
-} Vec2i;
-
-typedef struct {
-    u64 x, y;
-} Vec2ul;
-
-typedef struct {
-    i32 x, y, z;
-} Vec3i;
-
-typedef struct {
-    f32 x, y;
-} Vec2f;
-
-typedef struct {
-    f32 x, y, z;
-} Vec3f;
-
-typedef struct {
     vec3s pos;
     vec2s uv;
 } Vertex;
@@ -137,6 +117,28 @@ static ivec3s ndc_to_pixels(vec3s ndc) {
         (1.0f - ((ndc.y + 1.0f) / 2.0f)) * (SCREEN_HEIGHT),
         -ndc.z * DEPTH_PRECISION
     };
+}
+
+static void sort_cw(Vertex *vertices) {
+    if(vertices[0].pos.x == vertices[1].pos.x
+        && vertices[1].pos.x == vertices[2].pos.x) {
+        return;
+    }
+
+    if(vertices[0].pos.y == vertices[1].pos.y
+        && vertices[1].pos.y == vertices[2].pos.y) {
+        return;
+    }
+
+    f32 a =
+        (vertices[0].pos.x - vertices[1].pos.x) * (vertices[2].pos.y - vertices[1].pos.y)
+            - (vertices[0].pos.y - vertices[1].pos.y) * (vertices[2].pos.x - vertices[1].pos.x);
+
+    if(a < 0.0f) {
+        Vertex t = vertices[0];
+        vertices[0] = vertices[2];
+        vertices[2] = t;
+    }
 }
 
 static void clear_color(u8 r, u8 g, u8 b, u8 a) {
@@ -279,7 +281,7 @@ static void draw_line(vec3s v1, vec3s v2, u32 color) {
         color);
 }
 
-static i32 edge_function(Vec2i a, Vec2i b, Vec2i c) {
+static i32 edge_function(ivec2s a, ivec2s b, ivec2s c) {
     return ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x));
 }
 
@@ -316,15 +318,15 @@ static void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     z3 = SDL_clamp(z3, 0, DEPTH_PRECISION);
 
     i32 e_row1, e_row2, e_row3;
-    e_row1 = edge_function((Vec2i){x1, y1}, (Vec2i){x3, y3}, (Vec2i){min_x, min_y});
-    e_row2 = edge_function((Vec2i){x3, y3}, (Vec2i){x2, y2}, (Vec2i){min_x, min_y});
-    e_row3 = edge_function((Vec2i){x2, y2}, (Vec2i){x1, y1}, (Vec2i){min_x, min_y});
+    e_row1 = edge_function((ivec2s){x1, y1}, (ivec2s){x3, y3}, (ivec2s){min_x, min_y});
+    e_row2 = edge_function((ivec2s){x3, y3}, (ivec2s){x2, y2}, (ivec2s){min_x, min_y});
+    e_row3 = edge_function((ivec2s){x2, y2}, (ivec2s){x1, y1}, (ivec2s){min_x, min_y});
 
     i32 last_e1 = 0;;
     i32 last_e2 = 0;;
     i32 last_e3 = 0;;
 
-    Vec2f tex_coords;
+    vec2s tex_coords;
 
     for(i32 y = min_y; y < max_y; y++) {
         i32 e1 = e_row1;
@@ -349,10 +351,6 @@ static void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                 u32 index =
                     (u32)((tex_coords.x * (texture->width - 1)))
                     + (u32)(tex_coords.y * (texture->height - 1)) * texture->width;
-
-                if(y == min_y) {
-                    printf("%u, %f, %f\n", index, tex_coords.x, tex_coords.y);
-                }
 
                 u32 color = 0x000000FF;
 
@@ -427,7 +425,8 @@ static void draw_triangles(
     mat4s view,
     mat4s model) {
     Vertex local_vertices[3];
-    mat4s m = glms_mat4_mul(proj, view);
+    mat4s m = glms_mat4_mul(view, model);
+    m = glms_mat4_mul(proj, m);
 
     for(u32 i = 0; i < count; i++) {
         memcpy(local_vertices, &vertices[i * 3], sizeof(local_vertices));
@@ -445,6 +444,7 @@ static void draw_triangles(
             local_vertices[j].pos.y = v.w == 0.0f ? 0.0f : v.y / v.w;
             local_vertices[j].pos.z = v.w == 0.0f ? 0.0f : v.z / v.w;
         }
+        sort_cw(local_vertices);
         draw_triangle(local_vertices, texture);
     }
 }
@@ -506,7 +506,8 @@ int main() {
 
         long start = ns_now();
 
-        vec3s pos = {0.0f, 0.0f, 1.0f};
+        vec3s pos = {0.0f, 0.0f, 3.0f};
+        mat4s model = glms_mat4_identity();
         mat4s view = glms_mat4_identity();
         mat4s proj = glms_mat4_identity();
         view = glms_lookat(
@@ -514,6 +515,7 @@ int main() {
             glms_vec3_add(pos, (vec3s) {0.0f, 0.0f, -1.0f}),
             (vec3s) {0.0f, 1.0f, 0.0f});
         proj = glms_perspective(glm_rad(90.0f), (f32) SCREEN_WIDTH / (f32) SCREEN_HEIGHT, 0.1f, 100.0f);
+        model = glms_rotate(model, glm_rad((f32) counter), (vec3s) {1.0f, 1.0f, 0.0f});
 
         Vertex vertices[6];
         vertices[0] = (Vertex) {
@@ -541,7 +543,7 @@ int main() {
             (vec2s) {0.0f, 1.0f / 8.0f}
         };
 
-        draw_triangles(2, vertices, &texture, proj, view, glms_mat4_identity());
+        draw_triangles(2, vertices, &texture, proj, view, model);
 
         long end = ns_now();
         
