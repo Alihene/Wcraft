@@ -5,6 +5,8 @@
     },
     "files.associations": {
         "time.h": "c",
-        "random": "c"
+        "random": "c",
+        "algorithm": "c",
+        "format": "c"
     }
 }
