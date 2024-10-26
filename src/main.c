@@ -9,8 +9,8 @@
 #include <cglm/struct.h>
 #include <cglm/struct/cam.h>
 
-#define SCREEN_WIDTH 854
-#define SCREEN_HEIGHT 480
+#define SCREEN_WIDTH 427
+#define SCREEN_HEIGHT 240
 
 #define SET_PIXEL(x, y, color) if(x >= 0 && y >= 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) state.pixels[y * SCREEN_WIDTH + x] = color;
 
@@ -308,6 +308,16 @@ static void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     e_row2 = edge_function((ivec2s){x3, y3}, (ivec2s){x2, y2}, (ivec2s){min_x, min_y});
     e_row3 = edge_function((ivec2s){x2, y2}, (ivec2s){x1, y1}, (ivec2s){min_x, min_y});
 
+    f32 z1f = (f32) z1 / (f32) DEPTH_PRECISION;
+    f32 z2f = (f32) z2 / (f32) DEPTH_PRECISION;
+    f32 z3f = (f32) z3 / (f32) DEPTH_PRECISION;
+    z1f *= vertices[0].w;
+    z2f *= vertices[1].w;
+    z3f *= vertices[2].w;
+    z1f = 1.0f / z1f;
+    z2f = 1.0f / z2f;
+    z3f = 1.0f / z3f;
+
     vec2s tex_coords;
 
     for(i32 y = min_y; y < max_y; y++) {
@@ -322,9 +332,19 @@ static void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                 i32 area_12 = e3 >> 1;
 
                 f32 u, v, w; // Barycentric coordinates
-                u = (f32) area_23 * inverse_area;
-                v = (f32) area_12 * inverse_area;
-                w = (f32) area_31 * inverse_area;
+                u = (f32) area_23 * inverse_area * z1f;
+                v = (f32) area_12 * inverse_area * z3f;
+                w = (f32) area_31 * inverse_area * z2f;
+
+                f32 inverse_sum = 1.0f / (u + v + w);
+                u *= inverse_sum;
+                v *= inverse_sum;
+                w *= inverse_sum;
+
+                i32 depth =
+                    (i32) (u * z1)
+                    + (i32) (v * z3)
+                    + (i32) (w * z2);
 
                 // Barycentric uv coordinates
                 tex_coords.x = (u * uv1.x + v * uv3.x + w * uv2.x);
@@ -352,11 +372,6 @@ static void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                 }
 
                 if(state.depth_test) {
-                    i32 depth =
-                        (i32) (u * z1)
-                        + (i32) (v * z3)
-                        + (i32) (w * z2);
-
                     i32 d = state.depth_buffer[y * SCREEN_WIDTH + x];
 
                     if(d <= 0 || depth < d) {
@@ -430,6 +445,7 @@ static void draw_triangles(
             local_vertices[j].pos.x = v.w == 0.0f ? 0.0f : v.x / v.w;
             local_vertices[j].pos.y = v.w == 0.0f ? 0.0f : v.y / v.w;
             local_vertices[j].pos.z = v.w == 0.0f ? 0.0f : v.z / v.w;
+            local_vertices[j].w = v.w;
         }
         sort_cw(local_vertices);
         draw_triangle(local_vertices, texture);
