@@ -7,6 +7,8 @@
         "time.h": "c",
         "random": "c",
         "algorithm": "c",
-        "format": "c"
+        "format": "c",
+        "stb_image.h": "c",
+        "stdio.h": "c"
     }
 }
