@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 
 #include "util.h"
+#include "window.h"
 
 #define SCREEN_WIDTH 427
 #define SCREEN_HEIGHT 240
@@ -12,7 +13,6 @@
 #define DEPTH_PRECISION (1 << 12)
 
 typedef struct {
-    SDL_Window *window;
     SDL_Surface *surface;
     SDL_Renderer *renderer;
     SDL_Texture *texture;
@@ -45,7 +45,7 @@ typedef struct {
     vec2s uv;
 } RawVertex;
 
-RenderState *init_rendering();
+RenderState *init_rendering(Window *window);
 
 void cleanup_rendering();
 

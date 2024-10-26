@@ -61,21 +61,8 @@ static void sort_cw(Vertex *vertices) {
     }
 }
 
-RenderState *init_rendering() {
-    if(SDL_Init(SDL_INIT_VIDEO)) {
-        fprintf(stderr, "Failed to initialize SDL\n");
-        return NULL;
-    }
-
-    render_state.window = SDL_CreateWindow("Software Renderer", 854, 480, SDL_WINDOW_RESIZABLE);
-    if(!render_state.window) {
-        fprintf(stderr, "Failed to create window\n");
-        return NULL;
-    }
-
-    SDL_ShowWindow(render_state.window);
-
-    render_state.renderer = SDL_CreateRenderer(render_state.window, NULL, SDL_RENDERER_PRESENTVSYNC);
+RenderState *init_rendering(Window *window) {
+    render_state.renderer = SDL_CreateRenderer(window->handle, NULL, SDL_RENDERER_PRESENTVSYNC);
 
     if(!render_state.renderer) {
         printf("Failed to create renderer %s\n", SDL_GetError());
@@ -99,7 +86,6 @@ RenderState *init_rendering() {
 void cleanup_rendering() {
     SDL_DestroyTexture(render_state.texture);
     SDL_DestroyRenderer(render_state.renderer);
-    SDL_DestroyWindow(render_state.window);
 }
 
 void set_clear_color(u8 r, u8 g, u8 b, u8 a) {
@@ -254,6 +240,11 @@ void draw_triangles(
             local_vertices[j].pos.y = v.w == 0.0f ? 0.0f : v.y / v.w;
             local_vertices[j].pos.z = v.w == 0.0f ? 0.0f : v.z / v.w;
             local_vertices[j].w = v.w;
+
+            // Hack to stop segfaults - NEEDS PROPER FIXING
+            if(local_vertices[j].pos.z <= 0.0f || local_vertices[j].w <= 0.0f) {
+                return;
+            }
         }
         sort_cw(local_vertices);
         draw_triangle(local_vertices, texture);
