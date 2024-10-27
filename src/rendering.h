@@ -21,14 +21,8 @@ typedef struct {
     bool depth_test;
 } RenderState;
 
-typedef enum {
-    FORMAT_RGB,
-    FORMAT_RGBA
-} TextureFormat;
-
 typedef struct {
     u8 *data;
-    TextureFormat format;
     u32 width;
     u32 height;
 } Texture;
@@ -53,7 +47,7 @@ void set_clear_color(u8 r, u8 g, u8 b, u8 a);
 
 void present();
 
-Texture load_texture(const char *path, TextureFormat format);
+Texture load_texture(const char *path);
 void destroy_texture(Texture *texture);
 
 void draw_line(vec3s v1, vec3s v2, u32 color);

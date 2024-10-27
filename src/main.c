@@ -25,7 +25,7 @@ int main() {
 
     set_clear_color(0, 0, 0, 0xFF);
 
-    Texture texture = load_texture("resources/texture.png", FORMAT_RGBA);
+    Texture texture = load_texture("resources/texture.png");
 
     Camera camera = {0};
     camera.pitch = 0.0f;

@@ -71,7 +71,7 @@ RenderState *init_rendering(Window *window) {
 
     render_state.texture = SDL_CreateTexture(
         render_state.renderer,
-        SDL_PIXELFORMAT_BGRA8888,
+        SDL_PIXELFORMAT_ABGR8888,
         SDL_TEXTUREACCESS_STREAMING,
         SCREEN_WIDTH,
         SCREEN_HEIGHT);
@@ -115,17 +115,13 @@ void present() {
     SDL_RenderPresent(render_state.renderer);
 }
 
-Texture load_texture(const char *path, TextureFormat format) {
+Texture load_texture(const char *path) {
     stbi_set_flip_vertically_on_load(true);
 
     u8 *data;
     i32 width, height, channels;
 
-    if(format == FORMAT_RGB) {
-        data = stbi_load(path, &width, &height, &channels, 3);
-    } else if(format == FORMAT_RGBA) {
-        data = stbi_load(path, &width, &height, &channels, 4);
-    }
+    data = stbi_load(path, &width, &height, &channels, 4);
 
     if(!data) {
         fprintf(stderr, "Failed to load image from path %s\n", path);
@@ -135,7 +131,6 @@ Texture load_texture(const char *path, TextureFormat format) {
     texture.width = width;
     texture.height = height;
     texture.data = data;
-    texture.format = format;
     return texture;
 }
 
@@ -314,6 +309,13 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     e_row2 = edge_function((ivec2s){x3, y3}, (ivec2s){x2, y2}, (ivec2s){min_x, min_y});
     e_row3 = edge_function((ivec2s){x2, y2}, (ivec2s){x1, y1}, (ivec2s){min_x, min_y});
 
+    i32 de1_row = x1 - x3;
+    i32 de2_row = x3 - x2;
+    i32 de3_row = x2 - x1;
+    i32 de1 = y3 - y1;
+    i32 de2 = y2 - y3;
+    i32 de3 = y1 - y2;
+
     f32 z1f = (f32) z1 / (f32) DEPTH_PRECISION;
     f32 z2f = (f32) z2 / (f32) DEPTH_PRECISION;
     f32 z3f = (f32) z3 / (f32) DEPTH_PRECISION;
@@ -334,7 +336,6 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     f32 du_row = (f32)((x3 - x2)) * inverse_area * z1f / 2.0f;
     f32 dv_row = (f32)((x2 - x1)) * inverse_area * z3f / 2.0f;
     f32 dw_row = (f32)((x1 - x3)) * inverse_area * z2f / 2.0f;
-
     f32 du = (f32)((y2 - y3)) * inverse_area * z1f / 2.0f;
     f32 dv = (f32)((y1 - y2)) * inverse_area * z3f / 2.0f;
     f32 dw = (f32)((y3 - y1)) * inverse_area * z2f / 2.0f;
@@ -350,7 +351,9 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
             if((e1 | e2 | e3) >= 0) {
                 vec3s bc = raw_bc;
                 f32 inverse_sum = 1.0f / (bc.x + bc.y + bc.z);
-                bc = glms_vec3_scale(bc, inverse_sum);
+                bc.x *= inverse_sum;
+                bc.y *= inverse_sum;
+                bc.z *= inverse_sum;
 
                 i32 depth =
                     (i32) (bc.x * z1)
@@ -365,21 +368,7 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                     + (i32)(tex_coords.y * (texture->height - 1)) * texture->width;
 
                 index = SDL_clamp(index, 0, texture->width * texture->height - 1);
-
-                u32 color = 0x000000FF;
-
-                if(texture->format == FORMAT_RGBA) {
-                    index *= 4;
-                    color |= ((u32)(texture->data)[index]) << 8; // Red
-                    color |= ((u32)(texture->data)[index + 1]) << 16; // Green
-                    color |= ((u32)(texture->data)[index + 2]) << 24; // Blue
-                    color |= ((u32)(texture->data)[index + 3]); // Alpha
-                } else if(texture->format == FORMAT_RGB) {
-                    index *= 3;
-                    color |= ((u32)(texture->data)[index]) << 8; // Red
-                    color |= ((u32)(texture->data)[index + 1]) << 16; // Green
-                    color |= ((u32)(texture->data)[index + 2]) << 24; // Blue
-                }
+                u32 color = ((u32*) texture->data)[index];
 
                 if(render_state.depth_test) {
                     i32 d = render_state.depth_buffer[y * SCREEN_WIDTH + x];
@@ -393,18 +382,18 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                 }
             }
 
-            e1 += ((i32) y3 - (i32) y1);
-            e2 += ((i32) y2 - (i32) y3);
-            e3 += ((i32) y1 - (i32) y2);
+            e1 += de1;
+            e2 += de2;
+            e3 += de3;
 
             raw_bc.x += du;
             raw_bc.y += dv;
             raw_bc.z += dw;
         }
 
-        e_row1 += ((i32) x1 - (i32) x3);
-        e_row2 += ((i32) x3 - (i32) x2);
-        e_row3 += ((i32) x2 - (i32) x1);
+        e_row1 += de1_row;
+        e_row2 += de2_row;
+        e_row3 += de3_row;
 
         raw_bc_row.x += du_row;
         raw_bc_row.y += dv_row;
