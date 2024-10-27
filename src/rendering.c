@@ -347,7 +347,7 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
         vec3s raw_bc = raw_bc_row;
 
         for(i32 x = min_x; x < max_x; x++) {
-            if((e1 | e2 | e3) > 0) {
+            if((e1 | e2 | e3) >= 0) {
                 vec3s bc = raw_bc;
                 f32 inverse_sum = 1.0f / (bc.x + bc.y + bc.z);
                 bc = glms_vec3_scale(bc, inverse_sum);
