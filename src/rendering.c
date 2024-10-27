@@ -326,39 +326,43 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
 
     vec2s tex_coords;
 
+    vec3s raw_bc_row;
+    raw_bc_row.x = (f32) (e_row2 >> 1) * inverse_area * z1f;
+    raw_bc_row.y = (f32) (e_row3 >> 1) * inverse_area * z3f;
+    raw_bc_row.z = (f32) (e_row1 >> 1) * inverse_area * z2f;
+
+    f32 du_row = (f32)((x3 - x2) / 2) * inverse_area * z1f;
+    f32 dv_row = (f32)((x2 - x1) / 2) * inverse_area * z3f;
+    f32 dw_row = (f32)((x1 - x3) / 2) * inverse_area * z2f;
+
+    f32 du = (f32)((y2 - y3) / 2) * inverse_area * z1f;
+    f32 dv = (f32)((y1 - y2) / 2) * inverse_area * z3f;
+    f32 dw = (f32)((y3 - y1) / 2) * inverse_area * z2f;
+
     for(i32 y = min_y; y < max_y; y++) {
         i32 e1 = e_row1;
         i32 e2 = e_row2;
         i32 e3 = e_row3;
 
+        vec3s raw_bc = raw_bc_row;
+
         for(i32 x = min_x; x < max_x; x++) {
-            if((e1 >= 0) && (e2 >= 0) && (e3 >= 0)) {
-                i32 area_31 = e1 >> 1;
-                i32 area_23 = e2 >> 1;
-                i32 area_12 = e3 >> 1;
-
-                f32 u, v, w; // Barycentric coordinates
-                u = (f32) area_23 * inverse_area * z1f;
-                v = (f32) area_12 * inverse_area * z3f;
-                w = (f32) area_31 * inverse_area * z2f;
-
-                f32 inverse_sum = 1.0f / (u + v + w);
-                u *= inverse_sum;
-                v *= inverse_sum;
-                w *= inverse_sum;
+            if((e1 | e2 | e3) >= 0) {
+                vec3s bc = raw_bc;
+                f32 inverse_sum = 1.0f / (bc.x + bc.y + bc.z);
+                bc = glms_vec3_scale(bc, inverse_sum);
 
                 i32 depth =
-                    (i32) (u * z1)
-                    + (i32) (v * z3)
-                    + (i32) (w * z2);
+                    (i32) (bc.x * z1)
+                    + (i32) (bc.y * z3)
+                    + (i32) (bc.z * z2);
+                
+                tex_coords.x = (bc.x * uv1.x + bc.y * uv3.x + bc.z * uv2.x);
+                tex_coords.y = (bc.x * uv1.y + bc.y * uv3.y + bc.z * uv2.y);
 
-                // Barycentric uv coordinates
-                tex_coords.x = (u * uv1.x + v * uv3.x + w * uv2.x);
-                tex_coords.y = (u * uv1.y + v * uv3.y + w * uv2.y);
-
-                u32 index =
-                    (u32)((tex_coords.x * (texture->width - 1)))
-                    + (u32)(tex_coords.y * (texture->height - 1)) * texture->width;
+                i32 index =
+                    (i32)((tex_coords.x * (texture->width - 1)))
+                    + (i32)(tex_coords.y * (texture->height - 1)) * texture->width;
 
                 u32 color = 0x000000FF;
 
@@ -392,10 +396,18 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
             e1 += ((i32) y3 - (i32) y1);
             e2 += ((i32) y2 - (i32) y3);
             e3 += ((i32) y1 - (i32) y2);
+
+            raw_bc.x += du;
+            raw_bc.y += dv;
+            raw_bc.z += dw;
         }
 
         e_row1 += ((i32) x1 - (i32) x3);
         e_row2 += ((i32) x3 - (i32) x2);
         e_row3 += ((i32) x2 - (i32) x1);
+
+        raw_bc_row.x += du_row;
+        raw_bc_row.y += dv_row;
+        raw_bc_row.z += dw_row;
     }
 }

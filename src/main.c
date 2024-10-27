@@ -2,20 +2,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <math.h>
-#include <time.h>
 #include <limits.h>
 #include <cglm/struct/cam.h>
 
 #include "rendering.h"
 #include "camera.h"
-
-#define NS_PER_SECOND 1000000000
-
-static long ns_now() {
-	struct timespec ts;
-	timespec_get(&ts, TIME_UTC);
-	return ((ts.tv_sec * NS_PER_SECOND) + ts.tv_nsec);
-}
 
 struct {
     RenderState *render_state;
@@ -108,8 +99,6 @@ int main() {
 
         update_camera(&camera, &window);
 
-        long start = ns_now();
-
         vec3s pos = {0.0f, 0.0f, 3.0f};
         mat4s model = glms_mat4_identity();
         mat4s view = glms_mat4_identity();
@@ -121,22 +110,22 @@ int main() {
         vertices[0] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, 1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
+            (vec2s) {0.0f, 1.0f}
         };
         vertices[1] = (Vertex) {
             (vec3s) {1.0f, 1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 1.0f / 8.0f}
+            (vec2s) {1.0f, 1.0f}
         };
         vertices[2] = (Vertex) {
             (vec3s){1.0f, -1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
+            (vec2s) {1.0f, 0.0f}
         };
         vertices[3] = (Vertex) {
             (vec3s){1.0f, -1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
+            (vec2s) {1.0f, 0.0f}
         };
         vertices[4] = (Vertex) {
             (vec3s){-1.0f, -1.0f, 1.0f},
@@ -146,27 +135,27 @@ int main() {
         vertices[5] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, 1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
+            (vec2s) {0.0f, 1.0f}
         };
         vertices[6] = (Vertex) {
             (vec3s) {-1.0f, -1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
+            (vec2s) {1.0f, 0.0f}
         };
         vertices[7] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 1.0f / 8.0f}
+            (vec2s) {1.0f, 1.0f}
         };
         vertices[8] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, -1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
+            (vec2s) {0.0f, 1.0f}
         };
         vertices[9] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, -1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
+            (vec2s) {0.0f, 1.0f}
         };
         vertices[10] = (Vertex) {
             (vec3s) {-1.0f, -1.0f, -1.0f},
@@ -176,7 +165,7 @@ int main() {
         vertices[11] = (Vertex) {
             (vec3s) {-1.0f, -1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
+            (vec2s) {1.0f, 0.0f}
         };
         vertices[12] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, 1.0f},
@@ -186,22 +175,22 @@ int main() {
         vertices[13] = (Vertex) {
             (vec3s) {1.0f, 1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
+            (vec2s) {1.0f, 0.0f}
         };
         vertices[14] = (Vertex) {
             (vec3s) {1.0f, 1.0f, -1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 1.0f / 8.0f}
+            (vec2s) {1.0f, 1.0f}
         };
         vertices[15] = (Vertex) {
             (vec3s) {1.0f, 1.0f, -1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 1.0f / 8.0f}
+            (vec2s) {1.0f, 1.0f}
         };
         vertices[16] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, -1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
+            (vec2s) {0.0f, 1.0f}
         };
         vertices[17] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, 1.0f},
@@ -211,22 +200,22 @@ int main() {
         vertices[18] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, -1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
+            (vec2s) {0.0f, 1.0f}
         };
         vertices[19] = (Vertex) {
             (vec3s) {1.0f, 1.0f, -1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 1.0f / 8.0f}
+            (vec2s) {1.0f, 1.0f}
         };
         vertices[20] = (Vertex) {
             (vec3s){1.0f, -1.0f, -1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
+            (vec2s) {1.0f, 0.0f}
         };
         vertices[21] = (Vertex) {
             (vec3s){1.0f, -1.0f, -1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
+            (vec2s) {1.0f, 0.0f}
         };
         vertices[22] = (Vertex) {
             (vec3s){-1.0f, -1.0f, -1.0f},
@@ -236,27 +225,27 @@ int main() {
         vertices[23] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, -1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
+            (vec2s) {0.0f, 1.0f}
         };
         vertices[24] = (Vertex) {
             (vec3s) {1.0f, -1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
+            (vec2s) {1.0f, 0.0f}
         };
         vertices[25] = (Vertex) {
             (vec3s) {1.0f, 1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 1.0f / 8.0f}
+            (vec2s) {1.0f, 1.0f}
         };
         vertices[26] = (Vertex) {
             (vec3s) {1.0f, 1.0f, -1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
+            (vec2s) {0.0f, 1.0f}
         };
         vertices[27] = (Vertex) {
             (vec3s) {1.0f, 1.0f, -1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
+            (vec2s) {0.0f, 1.0f}
         };
         vertices[28] = (Vertex) {
             (vec3s) {1.0f, -1.0f, -1.0f},
@@ -266,7 +255,7 @@ int main() {
         vertices[29] = (Vertex) {
             (vec3s) {1.0f, -1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
+            (vec2s) {1.0f, 0.0f}
         };
         vertices[30] = (Vertex) {
             (vec3s) {-1.0f, -1.0f, 1.0f},
@@ -276,28 +265,30 @@ int main() {
         vertices[31] = (Vertex) {
             (vec3s) {1.0f, -1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
+            (vec2s) {1.0f, 0.0f}
         };
         vertices[32] = (Vertex) {
             (vec3s) {1.0f, -1.0f, -1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 1.0f / 8.0f}
+            (vec2s) {1.0f, 1.0f}
         };
         vertices[33] = (Vertex) {
             (vec3s) {1.0f, -1.0f, -1.0f},
             1.0f,
-            (vec2s) {1.0f / 8.0f, 1.0f / 8.0f}
+            (vec2s) {1.0f, 1.0f}
         };
         vertices[34] = (Vertex) {
             (vec3s) {-1.0f, -1.0f, -1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
+            (vec2s) {0.0f, 1.0f}
         };
         vertices[35] = (Vertex) {
             (vec3s) {-1.0f, -1.0f, 1.0f},
             1.0f,
             (vec2s) {0.0f, 0.0f}
         };
+
+        long start = ns_now();
 
         draw_triangles(12, vertices, &texture, proj, view, model);
 
