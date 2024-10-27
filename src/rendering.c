@@ -331,13 +331,13 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     raw_bc_row.y = (f32) (e_row3 >> 1) * inverse_area * z3f;
     raw_bc_row.z = (f32) (e_row1 >> 1) * inverse_area * z2f;
 
-    f32 du_row = (f32)((x3 - x2) / 2) * inverse_area * z1f;
-    f32 dv_row = (f32)((x2 - x1) / 2) * inverse_area * z3f;
-    f32 dw_row = (f32)((x1 - x3) / 2) * inverse_area * z2f;
+    f32 du_row = (f32)((x3 - x2)) * inverse_area * z1f / 2.0f;
+    f32 dv_row = (f32)((x2 - x1)) * inverse_area * z3f / 2.0f;
+    f32 dw_row = (f32)((x1 - x3)) * inverse_area * z2f / 2.0f;
 
-    f32 du = (f32)((y2 - y3) / 2) * inverse_area * z1f;
-    f32 dv = (f32)((y1 - y2) / 2) * inverse_area * z3f;
-    f32 dw = (f32)((y3 - y1) / 2) * inverse_area * z2f;
+    f32 du = (f32)((y2 - y3)) * inverse_area * z1f / 2.0f;
+    f32 dv = (f32)((y1 - y2)) * inverse_area * z3f / 2.0f;
+    f32 dw = (f32)((y3 - y1)) * inverse_area * z2f / 2.0f;
 
     for(i32 y = min_y; y < max_y; y++) {
         i32 e1 = e_row1;
@@ -347,7 +347,7 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
         vec3s raw_bc = raw_bc_row;
 
         for(i32 x = min_x; x < max_x; x++) {
-            if((e1 | e2 | e3) >= 0) {
+            if((e1 | e2 | e3) > 0) {
                 vec3s bc = raw_bc;
                 f32 inverse_sum = 1.0f / (bc.x + bc.y + bc.z);
                 bc = glms_vec3_scale(bc, inverse_sum);
@@ -364,18 +364,18 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                     (i32)((tex_coords.x * (texture->width - 1)))
                     + (i32)(tex_coords.y * (texture->height - 1)) * texture->width;
 
+                index = SDL_clamp(index, 0, texture->width * texture->height - 1);
+
                 u32 color = 0x000000FF;
 
                 if(texture->format == FORMAT_RGBA) {
                     index *= 4;
-
                     color |= ((u32)(texture->data)[index]) << 8; // Red
                     color |= ((u32)(texture->data)[index + 1]) << 16; // Green
                     color |= ((u32)(texture->data)[index + 2]) << 24; // Blue
                     color |= ((u32)(texture->data)[index + 3]); // Alpha
                 } else if(texture->format == FORMAT_RGB) {
                     index *= 3;
-
                     color |= ((u32)(texture->data)[index]) << 8; // Red
                     color |= ((u32)(texture->data)[index + 1]) << 16; // Green
                     color |= ((u32)(texture->data)[index + 2]) << 24; // Blue
