@@ -110,22 +110,22 @@ int main() {
         vertices[0] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, 1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f}
+            (vec2s) {0.0f, 1.0f / 8.0f}
         };
         vertices[1] = (Vertex) {
             (vec3s) {1.0f, 1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f, 1.0f}
+            (vec2s) {1.0f / 8.0f, 1.0f / 8.0f}
         };
         vertices[2] = (Vertex) {
             (vec3s){1.0f, -1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f, 0.0f}
+            (vec2s) {1.0f / 8.0f, 0.0f}
         };
         vertices[3] = (Vertex) {
             (vec3s){1.0f, -1.0f, 1.0f},
             1.0f,
-            (vec2s) {1.0f, 0.0f}
+            (vec2s) {1.0f / 8.0f, 0.0f}
         };
         vertices[4] = (Vertex) {
             (vec3s){-1.0f, -1.0f, 1.0f},
@@ -135,7 +135,7 @@ int main() {
         vertices[5] = (Vertex) {
             (vec3s) {-1.0f, 1.0f, 1.0f},
             1.0f,
-            (vec2s) {0.0f, 1.0f}
+            (vec2s) {0.0f, 1.0f / 8.0f}
         };
         vertices[6] = (Vertex) {
             (vec3s) {-1.0f, -1.0f, 1.0f},

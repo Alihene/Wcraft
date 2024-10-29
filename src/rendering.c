@@ -1,10 +1,11 @@
 #include "rendering.h"
 
 #include <stb_image/stb_image.h>
+#include <xmmintrin.h>
 
 static RenderState render_state;
 
-#define SET_PIXEL(x, y, color) if(x >= 0 && y >= 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) render_state.pixels[y * SCREEN_WIDTH + x] = color;
+#define SET_PIXEL(x, y, color) if(x >= 0 && y >= 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) render_state.pixels[((y) * SCREEN_WIDTH) + x] = color;
 
 static i32 max(i32 a, i32 b, i32 c) {
     if(a >= b && a >= c) {
@@ -340,63 +341,82 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     f32 dv = (f32)((y1 - y2)) * inverse_area * z3f / 2.0f;
     f32 dw = (f32)((y3 - y1)) * inverse_area * z2f / 2.0f;
 
-    for(i32 y = min_y; y < max_y; y++) {
+    for(i32 y = min_y; y < max_y; y += 2) {
         i32 e1 = e_row1;
         i32 e2 = e_row2;
         i32 e3 = e_row3;
 
         vec3s raw_bc = raw_bc_row;
 
-        for(i32 x = min_x; x < max_x; x++) {
-            if((e1 | e2 | e3) >= 0) {
-                vec3s bc = raw_bc;
-                f32 inverse_sum = 1.0f / (bc.x + bc.y + bc.z);
-                bc.x *= inverse_sum;
-                bc.y *= inverse_sum;
-                bc.z *= inverse_sum;
+        for(i32 x = min_x; x < max_x; x += 2) {
+            for(i32 yt = 0; yt < 2; yt++) {
+                for(i32 xt = 0; xt < 2; xt++) {
+                    if(((e1 + de1 * xt + de1_row * yt)
+                        | (e2 + de2 * xt + de2_row * yt)
+                        | (e3 + de3 * xt + de3_row * yt)) >= 0) {
+                        vec3s bc = raw_bc;
+                        bc.x += du * xt + du_row * yt;
+                        bc.y += dv * xt + dv_row * yt;
+                        bc.z += dw * xt + dw_row * yt;
+                        f32 inverse_sum = 1.0f / (bc.x + bc.y + bc.z);
+                        bc.x *= inverse_sum;
+                        bc.y *= inverse_sum;
+                        bc.z *= inverse_sum;
 
-                i32 depth =
-                    (i32) (bc.x * z1)
-                    + (i32) (bc.y * z3)
-                    + (i32) (bc.z * z2);
-                
-                tex_coords.x = (bc.x * uv1.x + bc.y * uv3.x + bc.z * uv2.x);
-                tex_coords.y = (bc.x * uv1.y + bc.y * uv3.y + bc.z * uv2.y);
+                        i32 depth =
+                            (i32) (bc.x * z1)
+                            + (i32) (bc.y * z3)
+                            + (i32) (bc.z * z2);
 
-                i32 index =
-                    (i32)((tex_coords.x * (texture->width - 1)))
-                    + (i32)(tex_coords.y * (texture->height - 1)) * texture->width;
+                        // Don't do per-pixel calculations if the pixel isn't visible!
+                        if(render_state.depth_test) {
+                            i32 d = render_state.depth_buffer[(y + yt) * SCREEN_WIDTH + x + xt];
+                            if(d <= 0 || depth < d) {
+                                tex_coords.x = (bc.x * uv1.x + bc.y * uv3.x + bc.z * uv2.x);
+                                tex_coords.y = (bc.x * uv1.y + bc.y * uv3.y + bc.z * uv2.y);
 
-                index = SDL_clamp(index, 0, texture->width * texture->height - 1);
-                u32 color = ((u32*) texture->data)[index];
+                                i32 index =
+                                    (i32)((tex_coords.x * (texture->width - 1)))
+                                    + (i32)(tex_coords.y * (texture->height - 1)) * texture->width;
 
-                if(render_state.depth_test) {
-                    i32 d = render_state.depth_buffer[y * SCREEN_WIDTH + x];
+                                index = SDL_clamp(index, 0, texture->width * texture->height - 1);
+                                u32 color = ((u32*) texture->data)[index];
+                            
+                                render_state.depth_buffer[(y + yt) * SCREEN_WIDTH + x + xt] = depth;
+                                SET_PIXEL(x + xt, y + yt, color);
+                            }
+                        } else {
+                            tex_coords.x = (bc.x * uv1.x + bc.y * uv3.x + bc.z * uv2.x);
+                            tex_coords.y = (bc.x * uv1.y + bc.y * uv3.y + bc.z * uv2.y);
 
-                    if(d <= 0 || depth < d) {
-                        render_state.depth_buffer[y * SCREEN_WIDTH + x] = depth;
-                        SET_PIXEL(x, y, color);
+                            i32 index =
+                                (i32)((tex_coords.x * (texture->width - 1)))
+                                + (i32)(tex_coords.y * (texture->height - 1)) * texture->width;
+
+                            index = SDL_clamp(index, 0, texture->width * texture->height - 1);
+                            u32 color = ((u32*) texture->data)[index];
+                        
+                            SET_PIXEL(x + xt, y + yt, color);
+                        }
                     }
-                } else {
-                    SET_PIXEL(x, y, color);
                 }
             }
 
-            e1 += de1;
-            e2 += de2;
-            e3 += de3;
+            e1 += de1 * 2;
+            e2 += de2 * 2;
+            e3 += de3 * 2;
 
-            raw_bc.x += du;
-            raw_bc.y += dv;
-            raw_bc.z += dw;
+            raw_bc.x += du * 2;
+            raw_bc.y += dv * 2;
+            raw_bc.z += dw * 2;
         }
 
-        e_row1 += de1_row;
-        e_row2 += de2_row;
-        e_row3 += de3_row;
+        e_row1 += de1_row * 2;
+        e_row2 += de2_row * 2;
+        e_row3 += de3_row * 2;
 
-        raw_bc_row.x += du_row;
-        raw_bc_row.y += dv_row;
-        raw_bc_row.z += dw_row;
+        raw_bc_row.x += du_row * 2;
+        raw_bc_row.y += dv_row * 2;
+        raw_bc_row.z += dw_row * 2;
     }
 }

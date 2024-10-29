@@ -6,7 +6,7 @@ add_subdirectory("thirdparty/cglm")
 
 project("software-renderer")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic -Wtype-limits -Wstrict-overflow=5 -fstrict-overflow -Wsign-compare")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic -Wtype-limits -Wstrict-overflow=5 -fstrict-overflow -Wsign-compare -O3")
 
 add_executable(${CMAKE_PROJECT_NAME} src/main.c src/rendering.c src/camera.c src/window.c src/util.c src/world.c)
 
