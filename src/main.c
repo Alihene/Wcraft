@@ -7,6 +7,7 @@
 
 #include "rendering.h"
 #include "camera.h"
+#include "world.h"
 
 struct {
     RenderState *render_state;
@@ -32,7 +33,10 @@ int main() {
     camera.yaw = 90.0f;
     camera.pos = (vec3s) {0.0f, 0.0f, 3.0f};
 
-    u32 counter = 0;
+    init_blocks();
+
+    Chunk chunk = init_chunk();
+    mesh_chunk(&chunk);
 
     while(!state.quit) {
         window.mouse.movement = (vec2s) {0.0f, 0.0f};
@@ -106,200 +110,17 @@ int main() {
         view = camera.view;
         proj = camera.proj;
 
-        Vertex vertices[36];
-        vertices[0] = (Vertex) {
-            (vec3s) {-1.0f, 1.0f, 1.0f},
-            1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
-        };
-        vertices[1] = (Vertex) {
-            (vec3s) {1.0f, 1.0f, 1.0f},
-            1.0f,
-            (vec2s) {1.0f / 8.0f, 1.0f / 8.0f}
-        };
-        vertices[2] = (Vertex) {
-            (vec3s){1.0f, -1.0f, 1.0f},
-            1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
-        };
-        vertices[3] = (Vertex) {
-            (vec3s){1.0f, -1.0f, 1.0f},
-            1.0f,
-            (vec2s) {1.0f / 8.0f, 0.0f}
-        };
-        vertices[4] = (Vertex) {
-            (vec3s){-1.0f, -1.0f, 1.0f},
-            1.0f,
-            (vec2s) {0.0f, 0.0f}
-        };
-        vertices[5] = (Vertex) {
-            (vec3s) {-1.0f, 1.0f, 1.0f},
-            1.0f,
-            (vec2s) {0.0f, 1.0f / 8.0f}
-        };
-        vertices[6] = (Vertex) {
-            (vec3s) {-1.0f, -1.0f, 1.0f},
-            1.0f,
-            (vec2s) {1.0f, 0.0f}
-        };
-        vertices[7] = (Vertex) {
-            (vec3s) {-1.0f, 1.0f, 1.0f},
-            1.0f,
-            (vec2s) {1.0f, 1.0f}
-        };
-        vertices[8] = (Vertex) {
-            (vec3s) {-1.0f, 1.0f, -1.0f},
-            1.0f,
-            (vec2s) {0.0f, 1.0f}
-        };
-        vertices[9] = (Vertex) {
-            (vec3s) {-1.0f, 1.0f, -1.0f},
-            1.0f,
-            (vec2s) {0.0f, 1.0f}
-        };
-        vertices[10] = (Vertex) {
-            (vec3s) {-1.0f, -1.0f, -1.0f},
-            1.0f,
-            (vec2s) {0.0f, 0.0f}
-        };
-        vertices[11] = (Vertex) {
-            (vec3s) {-1.0f, -1.0f, 1.0f},
-            1.0f,
-            (vec2s) {1.0f, 0.0f}
-        };
-        vertices[12] = (Vertex) {
-            (vec3s) {-1.0f, 1.0f, 1.0f},
-            1.0f,
-            (vec2s) {0.0f, 0.0f}
-        };
-        vertices[13] = (Vertex) {
-            (vec3s) {1.0f, 1.0f, 1.0f},
-            1.0f,
-            (vec2s) {1.0f, 0.0f}
-        };
-        vertices[14] = (Vertex) {
-            (vec3s) {1.0f, 1.0f, -1.0f},
-            1.0f,
-            (vec2s) {1.0f, 1.0f}
-        };
-        vertices[15] = (Vertex) {
-            (vec3s) {1.0f, 1.0f, -1.0f},
-            1.0f,
-            (vec2s) {1.0f, 1.0f}
-        };
-        vertices[16] = (Vertex) {
-            (vec3s) {-1.0f, 1.0f, -1.0f},
-            1.0f,
-            (vec2s) {0.0f, 1.0f}
-        };
-        vertices[17] = (Vertex) {
-            (vec3s) {-1.0f, 1.0f, 1.0f},
-            1.0f,
-            (vec2s) {0.0f, 0.0f}
-        };
-        vertices[18] = (Vertex) {
-            (vec3s) {-1.0f, 1.0f, -1.0f},
-            1.0f,
-            (vec2s) {0.0f, 1.0f}
-        };
-        vertices[19] = (Vertex) {
-            (vec3s) {1.0f, 1.0f, -1.0f},
-            1.0f,
-            (vec2s) {1.0f, 1.0f}
-        };
-        vertices[20] = (Vertex) {
-            (vec3s){1.0f, -1.0f, -1.0f},
-            1.0f,
-            (vec2s) {1.0f, 0.0f}
-        };
-        vertices[21] = (Vertex) {
-            (vec3s){1.0f, -1.0f, -1.0f},
-            1.0f,
-            (vec2s) {1.0f, 0.0f}
-        };
-        vertices[22] = (Vertex) {
-            (vec3s){-1.0f, -1.0f, -1.0f},
-            1.0f,
-            (vec2s) {0.0f, 0.0f}
-        };
-        vertices[23] = (Vertex) {
-            (vec3s) {-1.0f, 1.0f, -1.0f},
-            1.0f,
-            (vec2s) {0.0f, 1.0f}
-        };
-        vertices[24] = (Vertex) {
-            (vec3s) {1.0f, -1.0f, 1.0f},
-            1.0f,
-            (vec2s) {1.0f, 0.0f}
-        };
-        vertices[25] = (Vertex) {
-            (vec3s) {1.0f, 1.0f, 1.0f},
-            1.0f,
-            (vec2s) {1.0f, 1.0f}
-        };
-        vertices[26] = (Vertex) {
-            (vec3s) {1.0f, 1.0f, -1.0f},
-            1.0f,
-            (vec2s) {0.0f, 1.0f}
-        };
-        vertices[27] = (Vertex) {
-            (vec3s) {1.0f, 1.0f, -1.0f},
-            1.0f,
-            (vec2s) {0.0f, 1.0f}
-        };
-        vertices[28] = (Vertex) {
-            (vec3s) {1.0f, -1.0f, -1.0f},
-            1.0f,
-            (vec2s) {0.0f, 0.0f}
-        };
-        vertices[29] = (Vertex) {
-            (vec3s) {1.0f, -1.0f, 1.0f},
-            1.0f,
-            (vec2s) {1.0f, 0.0f}
-        };
-        vertices[30] = (Vertex) {
-            (vec3s) {-1.0f, -1.0f, 1.0f},
-            1.0f,
-            (vec2s) {0.0f, 0.0f}
-        };
-        vertices[31] = (Vertex) {
-            (vec3s) {1.0f, -1.0f, 1.0f},
-            1.0f,
-            (vec2s) {1.0f, 0.0f}
-        };
-        vertices[32] = (Vertex) {
-            (vec3s) {1.0f, -1.0f, -1.0f},
-            1.0f,
-            (vec2s) {1.0f, 1.0f}
-        };
-        vertices[33] = (Vertex) {
-            (vec3s) {1.0f, -1.0f, -1.0f},
-            1.0f,
-            (vec2s) {1.0f, 1.0f}
-        };
-        vertices[34] = (Vertex) {
-            (vec3s) {-1.0f, -1.0f, -1.0f},
-            1.0f,
-            (vec2s) {0.0f, 1.0f}
-        };
-        vertices[35] = (Vertex) {
-            (vec3s) {-1.0f, -1.0f, 1.0f},
-            1.0f,
-            (vec2s) {0.0f, 0.0f}
-        };
-
         long start = ns_now();
 
-        draw_triangles(12, vertices, &texture, proj, view, model);
+        draw_triangles(chunk.mesh.vertex_count, chunk.mesh.vertices, &texture, proj, view, model);
 
         long end = ns_now();
         
         present();
-
-        counter++;
         printf("Took %ld ns to render\n", end-start);
     }
 
+    destroy_chunk(&chunk);
     cleanup_rendering();
     destroy_window(&window);
     destroy_texture(&texture);

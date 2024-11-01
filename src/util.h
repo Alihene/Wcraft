@@ -16,4 +16,6 @@ typedef double f64;
 
 u64 ns_now();
 
+void *memset32(void *s, u32 c, u64 n);
+
 #endif
