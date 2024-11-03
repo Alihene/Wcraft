@@ -70,15 +70,29 @@ int main() {
         mat4s view = player.camera.view;
         mat4s proj = player.camera.proj;
 
+        u32 triangle_count = 0;
         long start = ns_now();
         for(i32 i = 0; i < SQ(LOAD_WIDTH); i++) {
             Chunk *chunk = &world->chunks[i];
-            draw_triangles(chunk->mesh.vertex_count / 3, chunk->mesh.vertices, &texture, proj, view, glms_translate(glms_mat4_identity(), (vec3s) {chunk->pos.x * 16, 0, chunk->pos.y * 16}));
+            draw_triangles(
+                chunk->mesh.vertex_count / 3,
+                chunk->mesh.vertices,
+                &texture,
+                proj,
+                view,
+                glms_translate(
+                    glms_mat4_identity(),
+                    (vec3s) {chunk->pos.x * 16, 0, chunk->pos.y * 16}));
+            triangle_count += chunk->mesh.vertex_count;
         }
         long end = ns_now();
         
         present();
-        printf("Took %ld ns to render\n", end-start);
+        triangle_count /= 3;
+        if(player.camera.pos.y >= 0.0f) {
+            triangle_count -= SQ(LOAD_WIDTH) * CHUNK_WIDTH * CHUNK_DEPTH * 2;
+        }
+        printf("Took %ld ns to render %u triangles\n", end-start, triangle_count);
     }
 
     cleanup_rendering();

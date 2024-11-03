@@ -31,12 +31,14 @@ typedef struct {
     vec3s pos;
     f32 w; // For perspective correct interpolation
     vec2s uv;
+    f32 brightness;
 } Vertex;
 
 typedef struct {
     ivec3s pos;
     f32 w; // For perspective correct interpolation
     vec2s uv;
+    f32 brightness;
 } RawVertex;
 
 RenderState *init_rendering(Window *window);

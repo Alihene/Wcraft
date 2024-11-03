@@ -42,4 +42,5 @@ void update_player(f32 timestep, const u8 *keys) {
         player.pos.y -= speed;
     }
     player.camera.pos = player.pos;
+    player.camera.pos.y += 1.5f; // Camera is at eye level
 }

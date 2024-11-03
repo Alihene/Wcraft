@@ -267,17 +267,20 @@ void draw_triangle(const Vertex *vertices, const Texture *texture) {
     raw_vertices[0] = (RawVertex) {
         .pos = ndc_to_pixels(vertices[0].pos),
         .w = vertices[0].w,
-        .uv = vertices[0].uv
+        .uv = vertices[0].uv,
+        .brightness = vertices[0].brightness
     };
     raw_vertices[1] = (RawVertex) {
         .pos = ndc_to_pixels(vertices[1].pos),
         .w = vertices[1].w,
-        .uv = vertices[1].uv
+        .uv = vertices[1].uv,
+        .brightness = vertices[0].brightness
     };
     raw_vertices[2] = (RawVertex) {
         .pos = ndc_to_pixels(vertices[2].pos),
         .w = vertices[2].w,
-        .uv = vertices[2].uv
+        .uv = vertices[2].uv,
+        .brightness = vertices[0].brightness
     };
 
     draw_triangle_raw(
@@ -357,6 +360,8 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     f32 dv = (f32)((y1 - y2)) * inverse_area * z3f / 2.0f;
     f32 dw = (f32)((y3 - y1)) * inverse_area * z2f / 2.0f;
 
+    f32 brightness = vertices[0].brightness;
+
     for(i32 y = min_y; y < max_y; y++) {
         i32 e1 = e_row1;
         i32 e2 = e_row2;
@@ -390,6 +395,15 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
 
                         index = SDL_clamp(index, 0, texture->width * texture->height - 1);
                         u32 color = ((u32*) texture->data)[index];
+                        f32 c1 = ((u8*) &color)[2];
+                        f32 c2 = ((u8*) &color)[1];
+                        f32 c3 = ((u8*) &color)[0];
+                        c1 *= brightness;
+                        c2 *= brightness;
+                        c3 *= brightness;
+                        ((u8*) &color)[2] = (u8) c1;
+                        ((u8*) &color)[1] = (u8) c2;
+                        ((u8*) &color)[0] = (u8) c3;
                     
                         render_state.depth_buffer[y * SCREEN_WIDTH + x] = depth;
                         SET_PIXEL(x, y, color);
@@ -404,6 +418,15 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
 
                     index = SDL_clamp(index, 0, texture->width * texture->height - 1);
                     u32 color = ((u32*) texture->data)[index];
+                    f32 c1 = ((u8*) &color)[2];
+                    f32 c2 = ((u8*) &color)[1];
+                    f32 c3 = ((u8*) &color)[0];
+                    c1 *= brightness;
+                    c2 *= brightness;
+                    c3 *= brightness;
+                    ((u8*) &color)[2] = (u8) c1;
+                    ((u8*) &color)[1] = (u8) c2;
+                    ((u8*) &color)[0] = (u8) c3;
                 
                     SET_PIXEL(x, y, color);
                 }
