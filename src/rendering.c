@@ -3,6 +3,8 @@
 #include <stb_image/stb_image.h>
 #include <immintrin.h>
 
+#include "player.h"
+
 static RenderState render_state;
 
 #define SET_PIXEL(x, y, color) if(x >= 0 && y >= 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) render_state.pixels[((y) * SCREEN_WIDTH) + x] = color;
@@ -39,7 +41,7 @@ static ivec3s ndc_to_pixels(vec3s ndc) {
     };
 }
 
-static void sort_cw(Vertex *vertices) {
+static bool sort_cw(Vertex *vertices) {
     if(vertices[0].pos.x == vertices[1].pos.x
         && vertices[1].pos.x == vertices[2].pos.x) {
         return;
@@ -59,7 +61,9 @@ static void sort_cw(Vertex *vertices) {
         Vertex t = vertices[1];
         vertices[1] = vertices[2];
         vertices[2] = t;
+        return true;
     }
+    return false;
 }
 
 RenderState *init_rendering(Window *window) {
@@ -221,6 +225,13 @@ void draw_triangles(
 
     for(u32 i = 0; i < count; i++) {
         memcpy(local_vertices, &vertices[i * 3], sizeof(local_vertices));
+        // Hack to save on performance
+        if(local_vertices[0].pos.y <= 0.0f
+            && local_vertices[1].pos.y <= 0.0f
+            && local_vertices[2].pos.y <= 0.0f
+            && player.camera.pos.y >= 0.0f) {
+            continue;
+        }
         bool draw[3] = { false, false, false };
 
         for(u32 j = 0; j < 3; j++) {

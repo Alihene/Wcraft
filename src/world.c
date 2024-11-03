@@ -81,6 +81,10 @@ static void try_mesh_left_face(Chunk *chunk, u8 x, u8 y, u8 z) {
         if(x == 0 && corresponding_block->type != BLOCK_AIR) {
             return;
         }
+    } else {
+        if(x == 0) {
+            return;
+        }
     }
 
     Block *block = chunk_get(chunk, x, y, z);
@@ -131,6 +135,10 @@ static void try_mesh_right_face(Chunk *chunk, u8 x, u8 y, u8 z) {
         Chunk *neighbour = &world.chunks[chunk->relative_pos.y * LOAD_WIDTH + chunk->relative_pos.x + 1];
         Block *corresponding_block = chunk_get(neighbour, 0, y, z);
         if(x == CHUNK_WIDTH - 1 && corresponding_block->type != BLOCK_AIR) {
+            return;
+        }
+    } else {
+        if(x == CHUNK_WIDTH - 1) {
             return;
         }
     }
@@ -185,6 +193,10 @@ static void try_mesh_front_face(Chunk *chunk, u8 x, u8 y, u8 z) {
         if(z == 0 && corresponding_block->type != BLOCK_AIR) {
             return;
         }
+    } else {
+        if(z == 0) {
+            return;
+        }
     }
 
     Block *block = chunk_get(chunk, x, y, z);
@@ -235,6 +247,10 @@ static void try_mesh_back_face(Chunk *chunk, u8 x, u8 y, u8 z) {
         Chunk *neighbour = &world.chunks[(chunk->relative_pos.y + 1) * LOAD_WIDTH + chunk->relative_pos.x];
         Block *corresponding_block = chunk_get(neighbour, x, y, 0);
         if(z == CHUNK_DEPTH - 1 && corresponding_block->type != BLOCK_AIR) {
+            return;
+        }
+    } else {
+        if(z == CHUNK_DEPTH - 1) {
             return;
         }
     }
