@@ -8,6 +8,7 @@
 #include "rendering.h"
 #include "camera.h"
 #include "world.h"
+#include "player.h"
 
 struct {
     RenderState *render_state;
@@ -21,6 +22,7 @@ int main() {
 
     state.render_state = init_rendering(&window);
     if(!state.render_state) {
+        fprintf(stderr, "Failed to initialize rendering\n");
         return -1;
     }
 
@@ -28,14 +30,14 @@ int main() {
 
     Texture texture = load_texture("resources/texture.png");
 
-    Camera camera = {0};
-    camera.pitch = 0.0f;
-    camera.yaw = 90.0f;
-    camera.pos = (vec3s) {0.0f, 0.0f, 3.0f};
+    init_player();
 
     init_blocks();
 
     World *world = init_world();
+
+    u64 start_time = SDL_GetTicks();
+    f32 last_time = 0.0f;
 
     while(!state.quit) {
         window.mouse.movement = (vec2s) {0.0f, 0.0f};
@@ -50,68 +52,25 @@ int main() {
                     window.mouse.movement.x = event.motion.xrel;
                     window.mouse.movement.y = -event.motion.yrel;
                     break;
-                case SDL_EVENT_KEY_DOWN:
-                    i32 key_down = event.key.keysym.sym;
-                    if (key_down >= 0 && key_down < 512) {
-                        window.keyboard[key_down] = true;
-                    }
-                    break;
-                case SDL_EVENT_KEY_UP:
-                    i32 key_up = event.key.keysym.sym;
-                    if (key_up >= 0 && key_up < 512) {
-                        window.keyboard[key_up] = false;
-                    }
-                    break;
                 default:
                     break;
             }
         }
 
-        const u8 *key_states = SDL_GetKeyboardState(NULL);
+        u64 current_time = SDL_GetTicks();
+        f32 elapsed_time = (current_time - start_time) / 1000.0f;
+        f32 timestep = elapsed_time - last_time;
+        last_time = elapsed_time;
 
-        f32 speed = 0.5f;
-        if(key_states[SDL_GetScancodeFromKey(SDLK_w)]) {
-            camera.pos = glms_vec3_add(camera.pos, glms_vec3_scale((vec3s) {
-                cosf(glm_rad(camera.yaw)),
-                0.0f,
-                sinf(glm_rad(camera.yaw))}, speed));
-        }
-        if(key_states[SDL_GetScancodeFromKey(SDLK_s)]) {
-            camera.pos = glms_vec3_sub(camera.pos, glms_vec3_scale((vec3s) {
-                cosf(glm_rad(camera.yaw)),
-                0.0f,
-                sinf(glm_rad(camera.yaw))}, speed));
-        }
-        if(key_states[SDL_GetScancodeFromKey(SDLK_a)]) {
-            camera.pos =
-                glms_vec3_sub(
-                    camera.pos,
-                    glms_vec3_scale(glms_normalize(glms_cross(camera.front, camera.up)), speed));
-        }
-        if(key_states[SDL_GetScancodeFromKey(SDLK_d)]) {
-            camera.pos =
-                glms_vec3_add(
-                    camera.pos,
-                    glms_vec3_scale(glms_normalize(glms_cross(camera.front, camera.up)), speed));
-        }
-        if(key_states[SDL_GetScancodeFromKey(SDLK_SPACE)]) {
-            camera.pos.y += speed;
-        }
-        if(key_states[SDL_GetScancodeFromKey(SDLK_LSHIFT)]) {
-            camera.pos.y -= speed;
-        }
+        update_keys(&window);
 
-        update_camera(&camera, &window);
+        update_camera(&player.camera, &window);
+        update_player(timestep, window.keys);
 
-        vec3s pos = {0.0f, 0.0f, 3.0f};
-        mat4s model = glms_mat4_identity();
-        mat4s view = glms_mat4_identity();
-        mat4s proj = glms_mat4_identity();
-        view = camera.view;
-        proj = camera.proj;
+        mat4s view = player.camera.view;
+        mat4s proj = player.camera.proj;
 
         long start = ns_now();
-
         for(i32 i = 0; i < SQ(LOAD_WIDTH); i++) {
             Chunk *chunk = &world->chunks[i];
             draw_triangles(chunk->mesh.vertex_count / 3, chunk->mesh.vertices, &texture, proj, view, glms_translate(glms_mat4_identity(), (vec3s) {chunk->pos.x * 16, 0, chunk->pos.y * 16}));

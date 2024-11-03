@@ -17,14 +17,13 @@ typedef struct {
         vec2s movement;
     } mouse;
 
-    bool keyboard[512];
-    bool space_pressed, lshift_pressed;
+    u8 *keys;
 } Window;
 
 Window init_window(const char *name, ivec2s dimensions);
 
 void destroy_window(Window *window);
 
-bool key_pressed(Window *window, i32 key);
+void update_keys(Window *window);
 
 #endif

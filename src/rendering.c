@@ -298,6 +298,9 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     i32 max_z = max(z1, z2, z3);
 
     i32 area = abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2)) >> 1;
+    if(area < 1) {
+        return;
+    }
     f32 inverse_area = 1.0f / (f32) area;
 
     min_x = SDL_clamp(min_x, 0, SCREEN_WIDTH);
@@ -333,9 +336,9 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     vec2s tex_coords;
 
     vec3s raw_bc_row;
-    raw_bc_row.x = (f32) (e_row2 >> 1) * inverse_area * z1f;
-    raw_bc_row.y = (f32) (e_row3 >> 1) * inverse_area * z3f;
-    raw_bc_row.z = (f32) (e_row1 >> 1) * inverse_area * z2f;
+    raw_bc_row.x = (f32) e_row2 * inverse_area * z1f / 2.0f;
+    raw_bc_row.y = (f32) e_row3 * inverse_area * z3f / 2.0f;
+    raw_bc_row.z = (f32) e_row1 * inverse_area * z2f / 2.0f;
     f32 du_row = (f32)((x3 - x2)) * inverse_area * z1f / 2.0f;
     f32 dv_row = (f32)((x2 - x1)) * inverse_area * z3f / 2.0f;
     f32 dw_row = (f32)((x1 - x3)) * inverse_area * z2f / 2.0f;
@@ -359,9 +362,9 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                 bc.z *= inverse_sum;
 
                 i32 depth =
-                    (i32) (bc.x * z1)
-                    + (i32) (bc.y * z3)
-                    + (i32) (bc.z * z2);
+                    bc.x * z1
+                    + bc.y * z3
+                    + bc.z * z2;
 
                 // Don't do per-pixel calculations if the pixel isn't visible!
                 if(render_state.depth_test) {
