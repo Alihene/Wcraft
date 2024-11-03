@@ -35,8 +35,7 @@ int main() {
 
     init_blocks();
 
-    Chunk chunk = init_chunk();
-    mesh_chunk(&chunk);
+    World *world = init_world();
 
     while(!state.quit) {
         window.mouse.movement = (vec2s) {0.0f, 0.0f};
@@ -70,35 +69,36 @@ int main() {
 
         const u8 *key_states = SDL_GetKeyboardState(NULL);
 
+        f32 speed = 0.5f;
         if(key_states[SDL_GetScancodeFromKey(SDLK_w)]) {
             camera.pos = glms_vec3_add(camera.pos, glms_vec3_scale((vec3s) {
                 cosf(glm_rad(camera.yaw)),
                 0.0f,
-                sinf(glm_rad(camera.yaw))}, 0.1f));
+                sinf(glm_rad(camera.yaw))}, speed));
         }
         if(key_states[SDL_GetScancodeFromKey(SDLK_s)]) {
             camera.pos = glms_vec3_sub(camera.pos, glms_vec3_scale((vec3s) {
                 cosf(glm_rad(camera.yaw)),
                 0.0f,
-                sinf(glm_rad(camera.yaw))}, 0.1f));
+                sinf(glm_rad(camera.yaw))}, speed));
         }
         if(key_states[SDL_GetScancodeFromKey(SDLK_a)]) {
             camera.pos =
                 glms_vec3_sub(
                     camera.pos,
-                    glms_vec3_scale(glms_normalize(glms_cross(camera.front, camera.up)), 0.1f));
+                    glms_vec3_scale(glms_normalize(glms_cross(camera.front, camera.up)), speed));
         }
         if(key_states[SDL_GetScancodeFromKey(SDLK_d)]) {
             camera.pos =
                 glms_vec3_add(
                     camera.pos,
-                    glms_vec3_scale(glms_normalize(glms_cross(camera.front, camera.up)), 0.1f));
+                    glms_vec3_scale(glms_normalize(glms_cross(camera.front, camera.up)), speed));
         }
         if(key_states[SDL_GetScancodeFromKey(SDLK_SPACE)]) {
-            camera.pos.y += 0.1f;
+            camera.pos.y += speed;
         }
         if(key_states[SDL_GetScancodeFromKey(SDLK_LSHIFT)]) {
-            camera.pos.y -= 0.1f;
+            camera.pos.y -= speed;
         }
 
         update_camera(&camera, &window);
@@ -112,15 +112,16 @@ int main() {
 
         long start = ns_now();
 
-        draw_triangles(chunk.mesh.vertex_count, chunk.mesh.vertices, &texture, proj, view, model);
-
+        for(i32 i = 0; i < SQ(LOAD_WIDTH); i++) {
+            Chunk *chunk = &world->chunks[i];
+            draw_triangles(chunk->mesh.vertex_count / 3, chunk->mesh.vertices, &texture, proj, view, glms_translate(glms_mat4_identity(), (vec3s) {chunk->pos.x * 16, 0, chunk->pos.y * 16}));
+        }
         long end = ns_now();
         
         present();
         printf("Took %ld ns to render\n", end-start);
     }
 
-    destroy_chunk(&chunk);
     cleanup_rendering();
     destroy_window(&window);
     destroy_texture(&texture);

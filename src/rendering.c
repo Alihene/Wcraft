@@ -221,6 +221,7 @@ void draw_triangles(
 
     for(u32 i = 0; i < count; i++) {
         memcpy(local_vertices, &vertices[i * 3], sizeof(local_vertices));
+        bool draw[3] = { false, false, false };
 
         for(u32 j = 0; j < 3; j++) {
             vec4s v =
@@ -238,12 +239,14 @@ void draw_triangles(
             local_vertices[j].w = v.w;
 
             // Hack to stop segfaults - NEEDS PROPER FIXING
-            if(local_vertices[j].w <= 0.0f) {
-                return;
+            if(local_vertices[j].w > 0.0f) {
+                draw[j] = true;
             }
         }
-        sort_cw(local_vertices);
-        draw_triangle(local_vertices, texture);
+        if(draw[0] && draw[1] && draw[2]) {
+            sort_cw(local_vertices);
+            draw_triangle(local_vertices, texture);
+        }
     }
 }
 

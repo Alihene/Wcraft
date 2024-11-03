@@ -7,10 +7,10 @@
 #include "util.h"
 #include "window.h"
 
-#define SCREEN_WIDTH 854
-#define SCREEN_HEIGHT 480
+#define SCREEN_WIDTH 427
+#define SCREEN_HEIGHT 240
 
-#define DEPTH_PRECISION (1 << 16)
+#define DEPTH_PRECISION (1 << 20)
 
 typedef struct {
     SDL_Surface *surface;

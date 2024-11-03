@@ -8,10 +8,13 @@
 #define CHUNK_DEPTH 16
 
 #define RENDER_DISTANCE 2
+// Side width of the square of loaded chunks
+#define LOAD_WIDTH (RENDER_DISTANCE * 2 + 1)
 
 typedef enum {
     BLOCK_AIR = 0,
-    BLOCK_GRASS = 1
+    BLOCK_GRASS = 1,
+    BLOCK_DIRT = 2
 } BlockType;
 
 #define MAX_BLOCK_ID 0x000000FF
@@ -33,6 +36,9 @@ typedef struct {
 } BlockFace;
 
 typedef struct {
+    ivec2s pos;
+    ivec2s relative_pos;
+
     struct {
         Vertex *vertices;
         BlockFace *faces;
@@ -49,10 +55,11 @@ typedef struct {
 
 void init_blocks();
 
-Chunk init_chunk();
 void destroy_chunk(Chunk *chunk);
 void mesh_chunk(Chunk *chunk);
 Block *chunk_get(Chunk *chunk, u8 x, u8 y, u8 z);
 void chunk_set(Chunk *chunk, const Block *block, u8 x, u8 y, u8 z);
+
+World *init_world();
 
 #endif
