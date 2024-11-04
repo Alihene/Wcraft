@@ -7,7 +7,7 @@ Software rendered minecraft clone that does not rely on libraries like OpenGL, D
 - [x] Triangle rasterization
 - [x] Perspective camera
 - [x] Chunking
-- [ ] World generation
+- [x] World generation
 - [ ] Block placing/breaking
 - [ ] Transparency (glass, water)
 - [ ] Lighting
