@@ -7,9 +7,9 @@
 #define CHUNK_HEIGHT 32
 #define CHUNK_DEPTH 16
 
-#define RENDER_DISTANCE 2
+#define LOAD_DISTANCE 6
 // Side width of the square of loaded chunks
-#define LOAD_WIDTH (RENDER_DISTANCE * 2 + 1)
+#define LOAD_WIDTH (LOAD_DISTANCE * 2 + 1)
 
 typedef enum {
     BLOCK_AIR = 0,
@@ -44,22 +44,30 @@ typedef struct {
         BlockFace *faces;
         u32 vertex_count;
         u32 vertex_count_alloc;
+        bool should_update;
     } mesh;
 
     u8 blocks[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH];
 } Chunk;
 
 typedef struct {
-    Chunk chunks[(RENDER_DISTANCE * 2 + 1) * (RENDER_DISTANCE * 2 + 1)];
+    Chunk **chunks;
+    u32 chunk_count;
 } World;
 
 void init_blocks();
 
 void destroy_chunk(Chunk *chunk);
-void mesh_chunk(Chunk *chunk);
+void mesh_chunk(Chunk *chunk, bool update_flag);
 Block *chunk_get(Chunk *chunk, u8 x, u8 y, u8 z);
 void chunk_set(Chunk *chunk, const Block *block, u8 x, u8 y, u8 z);
 
 World *init_world();
+Chunk *get_chunk(i32 x, i32 y);
+void update_world();
+void load_chunks();
+void world_set(const Block *block, u8 x, u8 y, u8 z);
+Block *world_get(u8 x, u8 y, u8 z);
+void destroy_world();
 
 #endif

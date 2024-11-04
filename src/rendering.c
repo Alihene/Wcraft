@@ -313,7 +313,7 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
 
     i32 area = abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2)) >> 1;
     if(area < 1) {
-        return;
+        area = 1;
     }
     f32 inverse_area = 1.0f / (f32) area;
 

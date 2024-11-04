@@ -39,6 +39,9 @@ int main() {
     u64 start_time = SDL_GetTicks();
     f32 last_time = 0.0f;
 
+    u64 last_second = ns_now();
+    u32 frames = 0;
+
     while(!state.quit) {
         window.mouse.movement = (vec2s) {0.0f, 0.0f};
 
@@ -67,34 +70,38 @@ int main() {
         update_camera(&player.camera, &window);
         update_player(timestep, window.keys);
 
+        update_world();
+
         mat4s view = player.camera.view;
         mat4s proj = player.camera.proj;
 
-        u32 triangle_count = 0;
-        long start = ns_now();
-        for(i32 i = 0; i < SQ(LOAD_WIDTH); i++) {
-            Chunk *chunk = &world->chunks[i];
-            draw_triangles(
-                chunk->mesh.vertex_count / 3,
-                chunk->mesh.vertices,
-                &texture,
-                proj,
-                view,
-                glms_translate(
-                    glms_mat4_identity(),
-                    (vec3s) {chunk->pos.x * 16, 0, chunk->pos.y * 16}));
-            triangle_count += chunk->mesh.vertex_count;
+        for(i32 i = 0; i < world->chunk_count; i++) {
+            Chunk *chunk = world->chunks[i];
+            if(chunk) {
+                draw_triangles(
+                    chunk->mesh.vertex_count / 3,
+                    chunk->mesh.vertices,
+                    &texture,
+                    proj,
+                    view,
+                    glms_translate(
+                        glms_mat4_identity(),
+                        (vec3s) {chunk->pos.x * 16, 0, chunk->pos.y * 16}));
+            }
         }
-        long end = ns_now();
+        frames++;
+
+        u64 now = ns_now();
+        if(now - last_second > NS_PER_SECOND) {
+            printf("FPS: %u\n", frames);
+            frames = 0;
+            last_second = now;
+        }
         
         present();
-        triangle_count /= 3;
-        if(player.camera.pos.y >= 0.0f) {
-            triangle_count -= SQ(LOAD_WIDTH) * CHUNK_WIDTH * CHUNK_DEPTH * 2;
-        }
-        printf("Took %ld ns to render %u triangles\n", end-start, triangle_count);
     }
 
+    destroy_world();
     cleanup_rendering();
     destroy_window(&window);
     destroy_texture(&texture);

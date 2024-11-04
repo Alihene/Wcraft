@@ -6,7 +6,7 @@ Player player;
 
 void init_player() {
     player.camera = (Camera) {0};
-    player.pos = (vec3s) {0.0f, 0.0f, 0.0f};
+    player.pos = (vec3s) {0.0f, 20.0f, 0.0f};
 }
 
 void update_player(f32 timestep, const u8 *keys) {

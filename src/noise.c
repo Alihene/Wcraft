@@ -18,7 +18,7 @@ static i32 permutations[] = {
 };
 
 static i32 noise2(i32 x, i32 y) {
-    int tmp = permutations[(y + seed) % 256];
+    i32 tmp = permutations[(y + seed) % 256];
     return permutations[(tmp + x) % 256];
 }
 
