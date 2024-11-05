@@ -10,7 +10,7 @@ void init_player() {
 }
 
 void update_player(f32 timestep, const u8 *keys) {
-    f32 speed = 10.0f * timestep;
+    f32 speed = 50.0f * timestep;
     if(keys[SDL_GetScancodeFromKey(SDLK_w)]) {
         player.pos = glms_vec3_add(player.pos, glms_vec3_scale((vec3s) {
             cosf(glm_rad(player.camera.yaw)),
