@@ -8,6 +8,7 @@ Player player;
 void init_player() {
     player.camera = (Camera) {0};
     player.pos = (vec3s) {0.0f, 20.0f, 0.0f};
+    player.hotbar_slot = 1;
 }
 
 void update_player(f32 timestep, const u8 *keys) {
@@ -105,7 +106,7 @@ void try_place_block() {
     ivec3s place_pos;
     if(raycast(player.camera.front, 5, NULL, &place_pos)) {
         world_set_and_mesh(
-            &blocks[BLOCK_COBBLESTONE],
+            &blocks[player.hotbar_slot],
             place_pos.x,
             place_pos.y,
             place_pos.z);

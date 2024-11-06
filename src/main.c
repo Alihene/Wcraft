@@ -63,6 +63,11 @@ int main() {
                         try_place_block();
                     }
                     break;
+                case SDL_EVENT_KEY_DOWN:
+                    if(event.key.keysym.scancode <= SDL_GetScancodeFromKey(SDLK_9) && event.key.keysym.scancode >= SDL_GetScancodeFromKey(SDLK_1)) {
+                        player.hotbar_slot = event.key.keysym.scancode - 29;
+                    }
+                    break;
                 default:
                     break;
             }
