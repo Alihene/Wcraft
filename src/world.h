@@ -14,7 +14,13 @@
 typedef enum {
     BLOCK_AIR = 0,
     BLOCK_GRASS = 1,
-    BLOCK_DIRT = 2
+    BLOCK_DIRT = 2,
+    BLOCK_STONE = 3,
+    BLOCK_GLASS = 4,
+    BLOCK_PLANKS = 5,
+    BLOCK_COBBLESTONE = 6,
+    BLOCK_LOG = 7,
+    BLOCK_SAND = 8
 } BlockType;
 
 #define MAX_BLOCK_ID 0x000000FF
@@ -27,6 +33,7 @@ typedef struct {
     } tex_coords;
 
     bool solid;
+    bool transparent;
 } Block;
 
 extern Block blocks[MAX_BLOCK_ID + 1];

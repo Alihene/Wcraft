@@ -17,7 +17,8 @@ void init_blocks() {
             .neg_z = (vec2s) {0, 0},
             .pos_z = (vec2s) {0, 0}
         },
-        .solid = false
+        .solid = false,
+        .transparent = true
     };
     blocks[BLOCK_GRASS] = (Block) {
         .type = BLOCK_GRASS,
@@ -29,7 +30,8 @@ void init_blocks() {
             .neg_z = (vec2s) {3 / 8.0f, 0},
             .pos_z = (vec2s) {3 / 8.0f, 0}
         },
-        .solid = true
+        .solid = true,
+        .transparent = false
     };
     blocks[BLOCK_DIRT] = (Block) {
         .type = BLOCK_DIRT,
@@ -41,7 +43,34 @@ void init_blocks() {
             .neg_z = (vec2s) {2 / 8.0f, 0},
             .pos_z = (vec2s) {2 / 8.0f, 0},
         },
-        .solid = true
+        .solid = true,
+        .transparent = false
+    };
+    blocks[BLOCK_STONE] = (Block) {
+        .type = BLOCK_STONE,
+        .tex_coords = {
+            .neg_x = (vec2s) {1 / 8.0f, 0},
+            .pos_x = (vec2s) {1 / 8.0f, 0},
+            .neg_y = (vec2s) {1 / 8.0f, 0},
+            .pos_y = (vec2s) {1 / 8.0f, 0},
+            .neg_z = (vec2s) {1 / 8.0f, 0},
+            .pos_z = (vec2s) {1 / 8.0f, 0},
+        },
+        .solid = true,
+        .transparent = false
+    };
+    blocks[BLOCK_GLASS] = (Block) {
+        .type = BLOCK_GLASS,
+        .tex_coords = {
+            .neg_x = (vec2s) {4 / 8.0f, 0},
+            .pos_x = (vec2s) {4 / 8.0f, 0},
+            .neg_y = (vec2s) {4 / 8.0f, 0},
+            .pos_y = (vec2s) {4 / 8.0f, 0},
+            .neg_z = (vec2s) {4 / 8.0f, 0},
+            .pos_z = (vec2s) {4 / 8.0f, 0},
+        },
+        .solid = true,
+        .transparent = true
     };
 }
 
@@ -71,8 +100,18 @@ static void push_vertex(Chunk *chunk, const Vertex *v) {
 }
 
 static void try_mesh_left_face(Chunk *chunk, u8 x, u8 y, u8 z) {
-    if(x > 0 && (chunk_get(chunk, x - 1, y, z)->type != BLOCK_AIR || chunk_get(chunk, x - 1, y, z)->solid)) {
-        return;
+    Block *block = chunk_get(chunk, x, y, z);
+    if(x > 0) {
+        Block *other_block = chunk_get(chunk, x - 1, y, z);
+        bool both_transparent = block->transparent && other_block->transparent;
+        bool both_non_transparent = !block->transparent && !other_block->transparent;
+        bool both_same_type = block->type == other_block->type;
+
+        if((both_transparent && both_same_type)
+            || (both_non_transparent)
+            || (block->transparent && !both_transparent && !both_non_transparent)) {
+            return;
+        }
     }
 
     Chunk *neighbour = get_chunk(chunk->pos.x - 1, chunk->pos.y);
@@ -87,7 +126,6 @@ static void try_mesh_left_face(Chunk *chunk, u8 x, u8 y, u8 z) {
         }
     }
 
-    Block *block = chunk_get(chunk, x, y, z);
     vec2s tex_coords = blocks[block->type].tex_coords.neg_x;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z + 1},
@@ -132,8 +170,18 @@ static void try_mesh_left_face(Chunk *chunk, u8 x, u8 y, u8 z) {
 }
 
 static void try_mesh_right_face(Chunk *chunk, u8 x, u8 y, u8 z) {
-    if(x < CHUNK_WIDTH - 1 && (chunk_get(chunk, x + 1, y, z)->type != BLOCK_AIR || chunk_get(chunk, x + 1, y, z)->solid)) {
-        return;
+    Block *block = chunk_get(chunk, x, y, z);
+    if(x < CHUNK_WIDTH - 1) {
+        Block *other_block = chunk_get(chunk, x + 1, y, z);
+        bool both_transparent = block->transparent && other_block->transparent;
+        bool both_non_transparent = !block->transparent && !other_block->transparent;
+        bool both_same_type = block->type == other_block->type;
+
+        if((both_transparent && both_same_type)
+            || (both_non_transparent)
+            || (block->transparent && !both_transparent && !both_non_transparent)) {
+            return;
+        }
     }
 
     Chunk *neighbour = get_chunk(chunk->pos.x + 1, chunk->pos.y);
@@ -148,7 +196,6 @@ static void try_mesh_right_face(Chunk *chunk, u8 x, u8 y, u8 z) {
         }
     }
 
-    Block *block = chunk_get(chunk, x, y, z);
     vec2s tex_coords = blocks[block->type].tex_coords.pos_x;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y, z},
@@ -193,8 +240,18 @@ static void try_mesh_right_face(Chunk *chunk, u8 x, u8 y, u8 z) {
 }
 
 static void try_mesh_front_face(Chunk *chunk, u8 x, u8 y, u8 z) {
-    if(z > 0 && (chunk_get(chunk, x, y, z - 1)->type != BLOCK_AIR || chunk_get(chunk, x, y, z - 1)->solid)) {
-        return;
+    Block *block = chunk_get(chunk, x, y, z);
+    if(z > 0) {
+        Block *other_block = chunk_get(chunk, x, y, z - 1);
+        bool both_transparent = block->transparent && other_block->transparent;
+        bool both_non_transparent = !block->transparent && !other_block->transparent;
+        bool both_same_type = block->type == other_block->type;
+
+        if((both_transparent && both_same_type)
+            || (both_non_transparent)
+            || (block->transparent && !both_transparent && !both_non_transparent)) {
+            return;
+        }
     }
 
     Chunk *neighbour = get_chunk(chunk->pos.x, chunk->pos.y - 1);
@@ -208,8 +265,6 @@ static void try_mesh_front_face(Chunk *chunk, u8 x, u8 y, u8 z) {
             return;
         }
     }
-
-    Block *block = chunk_get(chunk, x, y, z);
     vec2s tex_coords = blocks[block->type].tex_coords.neg_z;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z},
@@ -254,8 +309,18 @@ static void try_mesh_front_face(Chunk *chunk, u8 x, u8 y, u8 z) {
 }
 
 static void try_mesh_back_face(Chunk *chunk, u8 x, u8 y, u8 z) {
-    if(z < CHUNK_DEPTH - 1 && (chunk_get(chunk, x, y, z + 1)->type != BLOCK_AIR || chunk_get(chunk, x, y, z + 1)->solid)) {
-        return;
+    Block *block = chunk_get(chunk, x, y, z);
+    if(z < CHUNK_DEPTH - 1) {
+        Block *other_block = chunk_get(chunk, x, y, z + 1);
+        bool both_transparent = block->transparent && other_block->transparent;
+        bool both_non_transparent = !block->transparent && !other_block->transparent;
+        bool both_same_type = block->type == other_block->type;
+
+        if((both_transparent && both_same_type)
+            || (both_non_transparent)
+            || (block->transparent && !both_transparent && !both_non_transparent)) {
+            return;
+        }
     }
 
     Chunk *neighbour = get_chunk(chunk->pos.x, chunk->pos.y + 1);
@@ -271,7 +336,6 @@ static void try_mesh_back_face(Chunk *chunk, u8 x, u8 y, u8 z) {
         }
     }
 
-    Block *block = chunk_get(chunk, x, y, z);
     vec2s tex_coords = blocks[block->type].tex_coords.pos_z;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y, z + 1},
@@ -316,11 +380,20 @@ static void try_mesh_back_face(Chunk *chunk, u8 x, u8 y, u8 z) {
 }
 
 static void try_mesh_bottom_face(Chunk *chunk, u8 x, u8 y, u8 z) {
-    if(y > 0 || chunk_get(chunk, x, y - 1, z)->type != BLOCK_AIR || chunk_get(chunk, x, y - 1, z)->solid) {
-        return;
+    Block *block = chunk_get(chunk, x, y, z);
+    if(y > 0) {
+        Block *other_block = chunk_get(chunk, x, y - 1, z);
+        bool both_transparent = block->transparent && other_block->transparent;
+        bool both_non_transparent = !block->transparent && !other_block->transparent;
+        bool both_same_type = block->type == other_block->type;
+
+        if((both_transparent && both_same_type)
+            || (both_non_transparent)
+            || (block->transparent && !both_transparent && !both_non_transparent)) {
+            return;
+        }
     }
 
-    Block *block = chunk_get(chunk, x, y, z);
     vec2s tex_coords = blocks[block->type].tex_coords.neg_y;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z},
@@ -365,11 +438,20 @@ static void try_mesh_bottom_face(Chunk *chunk, u8 x, u8 y, u8 z) {
 }
 
 static void try_mesh_top_face(Chunk *chunk, u8 x, u8 y, u8 z) {
-    if(y == CHUNK_HEIGHT || chunk_get(chunk, x, y + 1, z)->type != BLOCK_AIR || chunk_get(chunk, x, y + 1, z)->solid) {
-        return;
+    Block *block = chunk_get(chunk, x, y, z);
+    if(y < CHUNK_HEIGHT - 1) {
+        Block *other_block = chunk_get(chunk, x, y + 1, z);
+        bool both_transparent = block->transparent && other_block->transparent;
+        bool both_non_transparent = !block->transparent && !other_block->transparent;
+        bool both_same_type = block->type == other_block->type;
+
+        if((both_transparent && both_same_type)
+            || (both_non_transparent)
+            || (block->transparent && !both_transparent && !both_non_transparent)) {
+            return;
+        }
     }
 
-    Block *block = chunk_get(chunk, x, y, z);
     vec2s tex_coords = blocks[block->type].tex_coords.pos_y;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y + 1, z + 1},
@@ -481,8 +563,10 @@ static void gen_chunk(Chunk *chunk) {
             for(i32 y = 0; y <= h; y++) {
                 if(y == h) {
                     chunk_set(chunk, &blocks[BLOCK_GRASS], x, y, z);
-                } else {
+                } else if(h - y <= 4) {
                     chunk_set(chunk, &blocks[BLOCK_DIRT], x, y, z);
+                } else {
+                    chunk_set(chunk, &blocks[BLOCK_STONE], x, y, z);
                 }
             }
         }
