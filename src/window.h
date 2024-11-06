@@ -17,7 +17,7 @@ typedef struct {
         vec2s movement;
     } mouse;
 
-    u8 *keys;
+    const u8 *keys;
 } Window;
 
 Window init_window(const char *name, ivec2s dimensions);

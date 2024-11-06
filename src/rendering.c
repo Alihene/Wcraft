@@ -44,12 +44,12 @@ static ivec3s ndc_to_pixels(vec3s ndc) {
 static bool sort_cw(Vertex *vertices) {
     if(vertices[0].pos.x == vertices[1].pos.x
         && vertices[1].pos.x == vertices[2].pos.x) {
-        return;
+        return false;
     }
 
     if(vertices[0].pos.y == vertices[1].pos.y
         && vertices[1].pos.y == vertices[2].pos.y) {
-        return;
+        return false;
     }
 
     // Checks if vertices 1 and 2 are clockwise around vertex 0
@@ -101,7 +101,7 @@ void set_clear_color(u8 r, u8 g, u8 b, u8 a) {
 
 void present() {
     void *px;
-    u32 pitch;
+    i32 pitch;
     SDL_LockTexture(render_state.texture, NULL, &px, &pitch);
     memcpy(px, render_state.pixels, sizeof(render_state.pixels));
     SDL_UnlockTexture(render_state.texture);
@@ -305,11 +305,9 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
 
     i32 min_x = min(x1, x2, x3);
     i32 min_y = min(y1, y2, y3);
-    i32 min_z = min(z1, z2, z3);
 
     i32 max_x = max(x1, x2, x3);
     i32 max_y = max(y1, y2, y3);
-    i32 max_z = max(z1, z2, z3);
 
     i32 area = abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2)) >> 1;
     if(area < 1) {
@@ -389,12 +387,40 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                         tex_coords.x = (bc.x * uv1.x + bc.y * uv3.x + bc.z * uv2.x);
                         tex_coords.y = (bc.x * uv1.y + bc.y * uv3.y + bc.z * uv2.y);
 
-                        i32 index =
-                            (i32)((tex_coords.x * (texture->width - 1)))
-                            + (i32)(tex_coords.y * (texture->height - 1)) * texture->width;
+                        u32 index =
+                            (u32)((tex_coords.x * (texture->width - 1)))
+                            + (u32)(tex_coords.y * (texture->height - 1)) * texture->width;
 
                         index = SDL_clamp(index, 0, texture->width * texture->height - 1);
                         u32 color = ((u32*) texture->data)[index];
+                        // Don't draw if alpha value is 0
+                        if(color & 0xFF000000) {
+                            f32 c1 = ((u8*) &color)[2];
+                            f32 c2 = ((u8*) &color)[1];
+                            f32 c3 = ((u8*) &color)[0];
+                            c1 *= brightness;
+                            c2 *= brightness;
+                            c3 *= brightness;
+                            ((u8*) &color)[2] = (u8) c1;
+                            ((u8*) &color)[1] = (u8) c2;
+                            ((u8*) &color)[0] = (u8) c3;
+                        
+                            render_state.depth_buffer[y * SCREEN_WIDTH + x] = depth;
+                            SET_PIXEL(x, y, color);
+                        }
+                    }
+                } else {
+                    tex_coords.x = (bc.x * uv1.x + bc.y * uv3.x + bc.z * uv2.x);
+                    tex_coords.y = (bc.x * uv1.y + bc.y * uv3.y + bc.z * uv2.y);
+
+                    u32 index =
+                        (u32)((tex_coords.x * (texture->width - 1)))
+                        + (u32)(tex_coords.y * (texture->height - 1)) * texture->width;
+
+                    index = SDL_clamp(index, 0, texture->width * texture->height - 1);
+                    u32 color = ((u32*) texture->data)[index];
+                    // Don't draw if alpha value is 0
+                    if(color & 0xFF000000) {
                         f32 c1 = ((u8*) &color)[2];
                         f32 c2 = ((u8*) &color)[1];
                         f32 c3 = ((u8*) &color)[0];
@@ -405,30 +431,8 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                         ((u8*) &color)[1] = (u8) c2;
                         ((u8*) &color)[0] = (u8) c3;
                     
-                        render_state.depth_buffer[y * SCREEN_WIDTH + x] = depth;
                         SET_PIXEL(x, y, color);
                     }
-                } else {
-                    tex_coords.x = (bc.x * uv1.x + bc.y * uv3.x + bc.z * uv2.x);
-                    tex_coords.y = (bc.x * uv1.y + bc.y * uv3.y + bc.z * uv2.y);
-
-                    i32 index =
-                        (i32)((tex_coords.x * (texture->width - 1)))
-                        + (i32)(tex_coords.y * (texture->height - 1)) * texture->width;
-
-                    index = SDL_clamp(index, 0, texture->width * texture->height - 1);
-                    u32 color = ((u32*) texture->data)[index];
-                    f32 c1 = ((u8*) &color)[2];
-                    f32 c2 = ((u8*) &color)[1];
-                    f32 c3 = ((u8*) &color)[0];
-                    c1 *= brightness;
-                    c2 *= brightness;
-                    c3 *= brightness;
-                    ((u8*) &color)[2] = (u8) c1;
-                    ((u8*) &color)[1] = (u8) c2;
-                    ((u8*) &color)[0] = (u8) c3;
-                
-                    SET_PIXEL(x, y, color);
                 }
             }
 

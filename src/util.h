@@ -18,6 +18,8 @@ typedef double f64;
 #define LERP(x, y, s) ((x) + (s) * ((y) - (x)))
 #define LERP_SMOOTH(x, y, s) LERP((x), (y), (s) * (s) * (3 - 2 * (s)))
 
+#define MOD(x, y) (((x) % (y) + (y)) % (y))
+
 #define NS_PER_SECOND 1000000000
 u64 ns_now();
 

@@ -55,6 +55,13 @@ int main() {
                     window.mouse.movement.x = event.motion.xrel;
                     window.mouse.movement.y = -event.motion.yrel;
                     break;
+                case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                    if(event.button.button == SDL_BUTTON_LEFT && event.button.state == SDL_PRESSED) {
+                        try_break_block();
+                    } else if(event.button.button == SDL_BUTTON_RIGHT && event.button.state == SDL_PRESSED) {
+                        try_place_block();
+                    }
+                    break;
                 default:
                     break;
             }

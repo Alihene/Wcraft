@@ -7,7 +7,7 @@
 #define CHUNK_HEIGHT 32
 #define CHUNK_DEPTH 16
 
-#define LOAD_DISTANCE 6
+#define LOAD_DISTANCE 4
 // Side width of the square of loaded chunks
 #define LOAD_WIDTH (LOAD_DISTANCE * 2 + 1)
 
@@ -66,8 +66,9 @@ World *init_world();
 Chunk *get_chunk(i32 x, i32 y);
 void update_world();
 void load_chunks();
-void world_set(const Block *block, u8 x, u8 y, u8 z);
-Block *world_get(u8 x, u8 y, u8 z);
+void world_set(const Block *block, i32 x, i32 y, i32 z);
+void world_set_and_mesh(const Block *block, i32 x, i32 y, i32 z);
+Block *world_get(i32 x, i32 y, i32 z);
 void destroy_world();
 
 #endif

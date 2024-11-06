@@ -17,4 +17,7 @@ void init_player();
 
 void update_player(f32 timestep, const u8 *keys);
 
+void try_break_block();
+void try_place_block();
+
 #endif

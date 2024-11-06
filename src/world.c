@@ -496,12 +496,10 @@ World *init_world() {
 }
 
 Chunk *get_chunk(i32 x, i32 y) {
-    for(i32 i = 0; i < SQ(LOAD_WIDTH); i++) {
+    for(u32 i = 0; i < world.chunk_count; i++) {
         Chunk *chunk = world.chunks[i];
-        if(chunk) {
-            if(chunk->pos.x == x && chunk->pos.y == y) {
-                return chunk;
-            }
+        if(chunk->pos.x == x && chunk->pos.y == y) {
+            return chunk;
         }
     }
     return NULL;
@@ -518,7 +516,7 @@ static Chunk *add_chunk(i32 x, i32 y) {
 
 void update_world() {
     load_chunks();
-    for(i32 i = 0; i < world.chunk_count; i++) {
+    for(u32 i = 0; i < world.chunk_count; i++) {
         Chunk *chunk = world.chunks[i];
         if(chunk->mesh.should_update) {
             mesh_chunk(chunk, true);
@@ -579,9 +577,9 @@ void load_chunks() {
     }
 }
 
-void world_set(const Block *block, u8 x, u8 y, u8 z) {
-    i32 chunk_pos_x = x / 16.0f;
-    i32 chunk_pos_z = z / 16.0f;
+void world_set(const Block *block, i32 x, i32 y, i32 z) {
+    i32 chunk_pos_x = floorf(x / 16.0f);
+    i32 chunk_pos_z = floorf(z / 16.0f);
 
     Chunk *chunk = get_chunk(chunk_pos_x, chunk_pos_z);
     if(!chunk) {
@@ -589,23 +587,38 @@ void world_set(const Block *block, u8 x, u8 y, u8 z) {
         return;
     }
 
-    i32 chunk_x = x % CHUNK_WIDTH;
-    i32 chunk_z = z % CHUNK_DEPTH;
+    i32 chunk_x = MOD(x, CHUNK_WIDTH);
+    i32 chunk_z = MOD(z, CHUNK_DEPTH);
 
     chunk_set(chunk, block, chunk_x, y, chunk_z);
 }
 
-Block *world_get(u8 x, u8 y, u8 z) {
-    i32 chunk_pos_x = x / 16.0f;
-    i32 chunk_pos_z = z / 16.0f;
+void world_set_and_mesh(const Block *block, i32 x, i32 y, i32 z) {
+    world_set(block, x, y, z);
+
+    i32 chunk_pos_x = floorf(x / 16.0f);
+    i32 chunk_pos_z = floorf(z / 16.0f);
+
+    Chunk *chunk = get_chunk(chunk_pos_x, chunk_pos_z);
+    if(!chunk) {
+        return;
+    }
+
+    mesh_chunk(chunk, true);
+    mesh_chunk_neighbours(chunk);
+}
+
+Block *world_get(i32 x, i32 y, i32 z) {
+    i32 chunk_pos_x = floorf(x / 16.0f);
+    i32 chunk_pos_z = floorf(z / 16.0f);
 
     Chunk *chunk = get_chunk(chunk_pos_x, chunk_pos_z);
     if(!chunk) {
         return NULL;
     }
 
-    i32 chunk_x = x % CHUNK_WIDTH;
-    i32 chunk_z = z % CHUNK_DEPTH;
+    i32 chunk_x = MOD(x, CHUNK_WIDTH);
+    i32 chunk_z = MOD(z, CHUNK_DEPTH);
 
     return chunk_get(chunk, chunk_x, y, chunk_z);
 }
