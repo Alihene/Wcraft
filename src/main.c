@@ -35,6 +35,7 @@ int main() {
     init_blocks();
 
     World *world = init_world();
+    world_set(&blocks[BLOCK_COBBLESTONE], 100, 31, 100);
 
     u64 start_time = SDL_GetTicks();
     f32 last_time = 0.0f;

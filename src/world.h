@@ -43,8 +43,12 @@ typedef struct {
 } BlockFace;
 
 typedef struct {
+    ivec3s pos;
+    const Block *block;
+} BlockSet;
+
+typedef struct {
     ivec2s pos;
-    ivec2s relative_pos;
 
     struct {
         Vertex *vertices;
@@ -58,8 +62,26 @@ typedef struct {
 } Chunk;
 
 typedef struct {
+    ivec2s pos;
+    u8 blocks[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH];
+} StoredChunk;
+
+typedef struct {
     Chunk **chunks;
     u32 chunk_count;
+
+    struct {
+        BlockSet *block_sets;
+        u32 count;
+        u32 allocated;
+    } block_set_list;
+
+    // Local chunk storage for unloaded chunks
+    struct {
+        StoredChunk *chunks;
+        u32 count;
+        u32 allocated;
+    } chunk_storage;
 } World;
 
 void init_blocks();

@@ -105,7 +105,7 @@ void try_place_block() {
     ivec3s place_pos;
     if(raycast(player.camera.front, 5, NULL, &place_pos)) {
         world_set_and_mesh(
-            &blocks[BLOCK_GLASS],
+            &blocks[BLOCK_COBBLESTONE],
             place_pos.x,
             place_pos.y,
             place_pos.z);

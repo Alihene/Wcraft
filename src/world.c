@@ -72,6 +72,58 @@ void init_blocks() {
         .solid = true,
         .transparent = true
     };
+    blocks[BLOCK_PLANKS] = (Block) {
+        .type = BLOCK_PLANKS,
+        .tex_coords = {
+            .neg_x = (vec2s) {5 / 8.0f, 0},
+            .pos_x = (vec2s) {5 / 8.0f, 0},
+            .neg_y = (vec2s) {5 / 8.0f, 0},
+            .pos_y = (vec2s) {5 / 8.0f, 0},
+            .neg_z = (vec2s) {5 / 8.0f, 0},
+            .pos_z = (vec2s) {5 / 8.0f, 0},
+        },
+        .solid = true,
+        .transparent = false
+    };
+    blocks[BLOCK_COBBLESTONE] = (Block) {
+        .type = BLOCK_COBBLESTONE,
+        .tex_coords = {
+            .neg_x = (vec2s) {6 / 8.0f, 0},
+            .pos_x = (vec2s) {6 / 8.0f, 0},
+            .neg_y = (vec2s) {6 / 8.0f, 0},
+            .pos_y = (vec2s) {6 / 8.0f, 0},
+            .neg_z = (vec2s) {6 / 8.0f, 0},
+            .pos_z = (vec2s) {6 / 8.0f, 0},
+        },
+        .solid = true,
+        .transparent = false
+    };
+    blocks[BLOCK_LOG] = (Block) {
+        .type = BLOCK_LOG,
+        .tex_coords = {
+            .neg_x = (vec2s) {7 / 8.0f, 0},
+            .pos_x = (vec2s) {7 / 8.0f, 0},
+            .neg_y = (vec2s) {0, 1.0f / 8.0f},
+            .pos_y = (vec2s) {0, 1.0f / 8.0f},
+            .neg_z = (vec2s) {7 / 8.0f, 0},
+            .pos_z = (vec2s) {7 / 8.0f, 0},
+        },
+        .solid = true,
+        .transparent = false
+    };
+    blocks[BLOCK_SAND] = (Block) {
+        .type = BLOCK_SAND,
+        .tex_coords = {
+            .neg_x = (vec2s) {2 / 8.0f, 1.0f / 8.0f},
+            .pos_x = (vec2s) {2 / 8.0f, 1.0f / 8.0f},
+            .neg_y = (vec2s) {2 / 8.0f, 1.0f / 8.0f},
+            .pos_y = (vec2s) {2 / 8.0f, 1.0f / 8.0f},
+            .neg_z = (vec2s) {2 / 8.0f, 1.0f / 8.0f},
+            .pos_z = (vec2s) {2 / 8.0f, 1.0f / 8.0f},
+        },
+        .solid = true,
+        .transparent = false
+    };
 }
 
 void destroy_chunk(Chunk *chunk) {
@@ -553,7 +605,85 @@ void chunk_set(Chunk *chunk, const Block *block, u8 x, u8 y, u8 z) {
     chunk->blocks[x + (z * CHUNK_WIDTH) + (y * CHUNK_WIDTH * CHUNK_DEPTH)] = block->type;
 }
 
+static void world_set_unloaded(const Block *block, i32 x, i32 y, i32 z) {
+    BlockSet block_set = (BlockSet) {
+        .pos = (ivec3s) {x, y, z},
+        .block = block
+    };
+
+    if(!world.block_set_list.block_sets) {
+        world.block_set_list.block_sets = malloc(32 * sizeof(BlockSet));
+        world.block_set_list.allocated = 32;
+    }
+
+    if(world.block_set_list.count >= world.block_set_list.allocated) {
+        world.block_set_list.block_sets = realloc(
+            world.block_set_list.block_sets,
+            2 * world.block_set_list.allocated * sizeof(BlockSet));
+        world.block_set_list.allocated *= 2;
+    }
+
+    world.block_set_list.block_sets[world.block_set_list.count] = block_set;
+    world.block_set_list.count++;
+}
+
+static void world_remove_block_set(u32 index) {
+    if(index >= world.block_set_list.count) {
+        return;
+    }
+
+    if(index < world.block_set_list.allocated - 1) {
+        for(u32 i = index; i < world.block_set_list.count - 1; i++) {
+            world.block_set_list.block_sets[i] = world.block_set_list.block_sets[i + 1];
+        }
+    }
+
+    world.block_set_list.count--;
+}
+
+static void store_chunk(const Chunk *chunk) {
+    if(!world.chunk_storage.chunks) {
+        world.chunk_storage.chunks = malloc(128 * sizeof(StoredChunk));
+        world.chunk_storage.allocated = 128;
+    }
+
+    if(world.chunk_storage.count >= world.chunk_storage.allocated) {
+        world.chunk_storage.chunks = realloc(
+            world.chunk_storage.chunks,
+            2 * world.chunk_storage.allocated * sizeof(StoredChunk));
+        world.chunk_storage.allocated *= 2;
+    }
+    
+    StoredChunk *ptr = &world.chunk_storage.chunks[world.chunk_storage.count];
+    ptr->pos = chunk->pos;
+    memcpy(ptr->blocks, chunk->blocks, sizeof(chunk->blocks));
+    world.chunk_storage.count++;
+}
+
+static void remove_stored_chunk(u32 index) {
+    if(index >= world.chunk_storage.count) {
+        return;
+    }
+
+    if(index < world.chunk_storage.allocated - 1) {
+        for(u32 i = index; i < world.chunk_storage.count - 1; i++) {
+            world.chunk_storage.chunks[i] = world.chunk_storage.chunks[i + 1];
+        }
+    }
+
+    world.chunk_storage.count--;
+}
+
 static void gen_chunk(Chunk *chunk) {
+    for(i32 i = world.chunk_storage.count - 1; i >= 0; i--) {
+        StoredChunk *c = &world.chunk_storage.chunks[i];
+        if(c->pos.x == chunk->pos.x && c->pos.y == chunk->pos.y) {
+            memcpy(chunk->blocks, c->blocks, sizeof(chunk->blocks));
+            remove_stored_chunk(i);
+            return;
+        }
+    }
+
     for(u8 x = 0; x < CHUNK_WIDTH; x++) {
         for(u8 z = 0; z < CHUNK_DEPTH; z++) {
             f32 a = perlin(
@@ -571,11 +701,34 @@ static void gen_chunk(Chunk *chunk) {
             }
         }
     }
+
+    // Backwards iteration
+    if(world.block_set_list.count > 0) {
+        for(i32 i = world.block_set_list.count - 1; i >= 0; i--) {
+            BlockSet block_set = world.block_set_list.block_sets[i];
+
+            i32 chunk_pos_x = floorf(block_set.pos.x / 16.0f);
+            i32 chunk_pos_z = floorf(block_set.pos.z / 16.0f);
+
+            if(chunk_pos_x == chunk->pos.x
+                && chunk_pos_z == chunk->pos.y) {
+                i32 chunk_x = MOD(block_set.pos.x, CHUNK_WIDTH);
+                i32 chunk_z = MOD(block_set.pos.z, CHUNK_DEPTH);
+
+                chunk_set(chunk, block_set.block, chunk_x, block_set.pos.y, chunk_z);
+                world_remove_block_set(i);
+            }
+        }
+    }
 }
 
 World *init_world() {
     world.chunks = calloc(SQ(LOAD_WIDTH), sizeof(Chunk*));
     world.chunk_count = 0;
+
+    world.block_set_list.block_sets = NULL;
+    world.block_set_list.count = 0;
+
     return &world;
 }
 
@@ -636,6 +789,7 @@ void load_chunks() {
             Chunk *chunk = world.chunks[chunks_to_remove[i]];
             i32 index = chunks_to_remove[i];
             if(chunk) {
+                store_chunk(chunk);
                 destroy_chunk(chunk);
                 free(chunk);
                 world.chunks[index] = NULL;
@@ -667,7 +821,8 @@ void world_set(const Block *block, i32 x, i32 y, i32 z) {
 
     Chunk *chunk = get_chunk(chunk_pos_x, chunk_pos_z);
     if(!chunk) {
-        // TODO add support for unloaded chunks
+        // Saved to an arraylist, will be used when the chunk is loaded
+        world_set_unloaded(block, x, y, z);
         return;
     }
 
