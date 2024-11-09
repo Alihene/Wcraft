@@ -3,46 +3,176 @@
 #include <SDL3/SDL.h>
 #include "world.h"
 
+#define HITBOX_WIDTH 0.6f
+#define HITBOX_HEIGHT 1.8f
+#define HITBOX_WIDTH_OFFSET ((1.0f - HITBOX_WIDTH) / 2.0f)
+
 Player player;
 
 void init_player() {
     player.camera = (Camera) {0};
     player.pos = (vec3s) {0.0f, 20.0f, 0.0f};
     player.hotbar_slot = 1;
+    player.y_velocity = 0.0f;
+}
+
+// Move and handle collisions on the xz plane
+static void move_xz(vec3s original_pos, vec3s delta, f32 speed) {
+    i32 block_pos_x = floorf(original_pos.x);
+    i32 block_pos_y = floorf(original_pos.y);
+    i32 block_pos_z = floorf(original_pos.z);
+
+    vec3s scaled_delta = glms_vec3_scale(delta, speed);
+    player.pos.x += scaled_delta.x;
+
+    for(i32 x = block_pos_x - 2; x <= block_pos_x + 2; x++) {
+        for(i32 y = block_pos_y - 2; y <= block_pos_y + 3; y++) {
+            for(i32 z = block_pos_z - 2; z <= block_pos_z + 2; z++) {
+                Block *block = world_get(x, y, z);
+                if(block && block->solid) {
+                    AABB player_aabb = (AABB) {
+                        .pos = (vec3s) {
+                            player.pos.x + HITBOX_WIDTH_OFFSET,
+                            player.pos.y,
+                            player.pos.z + HITBOX_WIDTH_OFFSET
+                        },
+                        .size = (vec3s) {
+                            HITBOX_WIDTH,
+                            HITBOX_HEIGHT,
+                            HITBOX_WIDTH}
+                    };
+                    AABB block_aabb = (AABB) {
+                        .pos = (vec3s) {x, y, z},
+                        .size = (vec3s) {1.0f, 1.0f, 1.0f}
+                    };
+                    while(aabb_colliding(player_aabb, block_aabb)) {
+                        if(delta.x >= 0.0f) {
+                            player.pos.x -= 0.01f;
+                            player_aabb.pos.x -= 0.01f;
+                        } else {
+                            player.pos.x += 0.01f;
+                            player_aabb.pos.x += 0.01f;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    player.pos.z += scaled_delta.z;
+    for(i32 x = block_pos_x - 2; x <= block_pos_x + 2; x++) {
+        for(i32 y = block_pos_y - 2; y <= block_pos_y + 3; y++) {
+            for(i32 z = block_pos_z - 2; z <= block_pos_z + 2; z++) {
+                Block *block = world_get(x, y, z);
+                if(block && block->solid) {
+                    AABB player_aabb = (AABB) {
+                        .pos = (vec3s) {
+                            player.pos.x + HITBOX_WIDTH_OFFSET,
+                            player.pos.y,
+                            player.pos.z + HITBOX_WIDTH_OFFSET
+                        },
+                        .size = (vec3s) {
+                            HITBOX_WIDTH,
+                            HITBOX_HEIGHT,
+                            HITBOX_WIDTH}
+                    };
+                    AABB block_aabb = (AABB) {
+                        .pos = (vec3s) {x, y, z},
+                        .size = (vec3s) {1.0f, 1.0f, 1.0f}
+                    };
+                    while(aabb_colliding(player_aabb, block_aabb)) {
+                        if(delta.z >= 0.0f) {
+                            player.pos.z -= 0.01f;
+                            player_aabb.pos.z -= 0.01f;
+                        } else {
+                            player.pos.z += 0.01f;
+                            player_aabb.pos.z += 0.01f;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Move and handle collisions on the y plane
+static void move_y(vec3s original_pos, f32 delta_y, f32 speed) {
+    i32 block_pos_x = floorf(original_pos.x);
+    i32 block_pos_y = floorf(original_pos.y);
+    i32 block_pos_z = floorf(original_pos.z);
+
+    player.pos.y += delta_y * speed;
+
+    for(i32 x = block_pos_x - 2; x <= block_pos_x + 2; x++) {
+        for(i32 y = block_pos_y - 2; y <= block_pos_y + 3; y++) {
+            for(i32 z = block_pos_z - 2; z <= block_pos_z + 2; z++) {
+                Block *block = world_get(x, y, z);
+                if(block && block->solid) {
+                    AABB player_aabb = (AABB) {
+                        .pos = (vec3s) {
+                            player.pos.x + HITBOX_WIDTH_OFFSET,
+                            player.pos.y,
+                            player.pos.z + HITBOX_WIDTH_OFFSET
+                        },
+                        .size = (vec3s) {HITBOX_WIDTH, HITBOX_HEIGHT, HITBOX_WIDTH}
+                    };
+                    AABB block_aabb = (AABB) {
+                        .pos = (vec3s) {x, y, z},
+                        .size = (vec3s) {1.0f, 1.0f, 1.0f}
+                    };
+                    while(aabb_colliding(player_aabb, block_aabb)) {
+                        if(delta_y >= 0.0f) {
+                            player.pos.y -= 0.01f;
+                            player_aabb.pos.y -= 0.01f;
+                        } else {
+                            player.pos.y += 0.01f;
+                            player_aabb.pos.y += 0.01f;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 void update_player(f32 timestep, const u8 *keys) {
+    i32 block_pos_x = floorf(player.pos.x);
+    i32 block_pos_y = floorf(player.pos.y);
+    i32 block_pos_z = floorf(player.pos.z);
+    vec3s original_pos = player.pos;
+
     f32 speed = 10.0f * timestep;
     if(keys[SDL_GetScancodeFromKey(SDLK_w)]) {
-        player.pos = glms_vec3_add(player.pos, glms_vec3_scale((vec3s) {
+        vec3s delta = (vec3s) {
             cosf(glm_rad(player.camera.yaw)),
             0.0f,
-            sinf(glm_rad(player.camera.yaw))}, speed));
+            sinf(glm_rad(player.camera.yaw))};
+        move_xz(original_pos, delta, speed);
     }
     if(keys[SDL_GetScancodeFromKey(SDLK_s)]) {
-        player.pos = glms_vec3_sub(player.pos, glms_vec3_scale((vec3s) {
+        vec3s delta = (vec3s) {
             cosf(glm_rad(player.camera.yaw)),
             0.0f,
-            sinf(glm_rad(player.camera.yaw))}, speed));
+            sinf(glm_rad(player.camera.yaw))};
+        delta = glms_vec3_negate(delta);
+        move_xz(original_pos, delta, speed);
     }
     if(keys[SDL_GetScancodeFromKey(SDLK_a)]) {
-        player.pos =
-            glms_vec3_sub(
-                player.pos,
-                glms_vec3_scale(glms_normalize(glms_cross(player.camera.front, player.camera.up)), speed));
+        vec3s delta = glms_normalize(glms_cross(player.camera.front, player.camera.up));
+        delta = glms_vec3_negate(delta);
+        move_xz(original_pos, delta, speed);
     }
     if(keys[SDL_GetScancodeFromKey(SDLK_d)]) {
-        player.pos =
-            glms_vec3_add(
-                player.pos,
-                glms_vec3_scale(glms_normalize(glms_cross(player.camera.front, player.camera.up)), speed));
+        vec3s delta = glms_normalize(glms_cross(player.camera.front, player.camera.up));
+        move_xz(original_pos, delta, speed);
     }
     if(keys[SDL_GetScancodeFromKey(SDLK_SPACE)]) {
-        player.pos.y += speed;
+        move_y(original_pos, 1.0f, speed);
     }
     if(keys[SDL_GetScancodeFromKey(SDLK_LSHIFT)]) {
-        player.pos.y -= speed;
+        move_y(original_pos, -1.0f, speed);
     }
+
     player.camera.pos = player.pos;
     player.camera.pos.x += 0.5f;
     player.camera.pos.y += 1.5f; // Camera is at eye level

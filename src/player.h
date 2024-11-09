@@ -10,6 +10,8 @@ typedef struct {
     vec3s pos;
     Camera camera;
     u32 hotbar_slot;
+
+    f32 y_velocity;
 } Player;
 
 extern Player player;

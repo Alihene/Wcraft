@@ -2,6 +2,8 @@
 #define _UTIL_H
 
 #include <stdint.h>
+#include <stdbool.h>
+#include <cglm/struct.h>
 
 typedef int8_t i8;
 typedef int16_t i16;
@@ -19,6 +21,13 @@ typedef double f64;
 #define LERP_SMOOTH(x, y, s) LERP((x), (y), (s) * (s) * (3 - 2 * (s)))
 
 #define MOD(x, y) (((x) % (y) + (y)) % (y))
+
+typedef struct {
+    vec3s pos;
+    vec3s size;
+} AABB;
+
+bool aabb_colliding(AABB a, AABB b);
 
 #define NS_PER_SECOND 1000000000
 u64 ns_now();
