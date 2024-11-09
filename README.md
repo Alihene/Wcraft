@@ -9,8 +9,9 @@ Software rendered minecraft clone that does not rely on libraries like OpenGL, D
 - [x] Chunking
 - [x] World generation
 - [x] Block placing/breaking
-- [ ] Transparency (glass, water)
+- [x] Transparency
+- [ ] Translucency
 - [ ] Lighting
 - [ ] Day/night cycle
-- [ ] Physics
+- [x] Physics
 - [ ] Multithreaded rendering
