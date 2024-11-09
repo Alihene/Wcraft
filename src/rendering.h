@@ -65,4 +65,7 @@ void draw_triangles(
 void draw_triangle(const Vertex *vertices, const Texture *texture);
 void draw_triangle_raw(RawVertex *vertices, const Texture *texture);
 
+vec2s lpc(vec2s tex_coords, f32 delta);
+vec2s rpc(vec2s tex_coords, f32 delta);
+
 #endif

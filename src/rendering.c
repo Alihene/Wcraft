@@ -7,7 +7,9 @@
 
 static RenderState render_state;
 
-#define SET_PIXEL(x, y, color) if(x >= 0 && y >= 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) render_state.pixels[((y) * SCREEN_WIDTH) + x] = color;
+#define SET_PIXEL(x, y, color) if(x >= 0 && y >= 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) render_state.pixels[((y) * SCREEN_WIDTH) + (x)] = (color);
+
+#define INVERSE_256 0.00390625f
 
 static i32 max(i32 a, i32 b, i32 c) {
     if(a >= b && a >= c) {
@@ -41,6 +43,7 @@ static ivec3s ndc_to_pixels(vec3s ndc) {
     };
 }
 
+// Returns true if the vertices had to be sorted, false otherwise
 static bool sort_cw(Vertex *vertices) {
     if(vertices[0].pos.x == vertices[1].pos.x
         && vertices[1].pos.x == vertices[2].pos.x) {
@@ -319,9 +322,9 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     max_x = SDL_clamp(max_x, 0, SCREEN_WIDTH);
     min_y = SDL_clamp(min_y, 0, SCREEN_HEIGHT);
     max_y = SDL_clamp(max_y, 0, SCREEN_HEIGHT);
-    z1 = SDL_clamp(z1, 0, DEPTH_PRECISION);
-    z2 = SDL_clamp(z2, 0, DEPTH_PRECISION);
-    z3 = SDL_clamp(z3, 0, DEPTH_PRECISION);
+    z1 = SDL_clamp(z1, 0, DEPTH_PRECISION + 1);
+    z2 = SDL_clamp(z2, 0, DEPTH_PRECISION + 1);
+    z3 = SDL_clamp(z3, 0, DEPTH_PRECISION + 1);
 
     i32 e_row1, e_row2, e_row3;
     e_row1 = edge_function((ivec2s){x1, y1}, (ivec2s){x3, y3}, (ivec2s){min_x, min_y});
@@ -391,7 +394,7 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                             (u32)((tex_coords.x * (texture->width - 1)))
                             + (u32)(tex_coords.y * (texture->height - 1)) * texture->width;
 
-                        index = SDL_clamp(index, 0, texture->width * texture->height - 1);
+                        index = SDL_clamp(index, 0, texture->width * texture->height);
                         u32 color = ((u32*) texture->data)[index];
                         // Don't draw if alpha value is 0
                         if(color & 0xFF000000) {
@@ -417,7 +420,7 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                         (u32)((tex_coords.x * (texture->width - 1)))
                         + (u32)(tex_coords.y * (texture->height - 1)) * texture->width;
 
-                    index = SDL_clamp(index, 0, texture->width * texture->height - 1);
+                    index = SDL_clamp(index, 0, texture->width * texture->height);
                     u32 color = ((u32*) texture->data)[index];
                     // Don't draw if alpha value is 0
                     if(color & 0xFF000000) {
@@ -451,4 +454,14 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
         raw_bc_row.y += dv_row;
         raw_bc_row.z += dw_row;
     }
+}
+
+vec2s lpc(vec2s tex_coords, f32 delta) {
+    tex_coords.x += delta;
+    return tex_coords;
+}
+
+vec2s rpc(vec2s tex_coords, f32 delta) {
+    tex_coords.x -= delta;
+    return tex_coords;
 }
