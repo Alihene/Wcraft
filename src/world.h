@@ -20,7 +20,8 @@ typedef enum {
     BLOCK_PLANKS = 5,
     BLOCK_COBBLESTONE = 6,
     BLOCK_LOG = 7,
-    BLOCK_SAND = 8
+    BLOCK_SAND = 8,
+    BLOCK_LEAVES = 9
 } BlockType;
 
 #define MAX_BLOCK_ID 0x000000FF

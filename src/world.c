@@ -1,6 +1,10 @@
 #include "world.h"
 #include "noise.h"
 #include "player.h"
+#include "xorshift.h"
+
+// Tree generation chance per block (1/n)
+#define TREE_GENERATION_CHANCE 200
 
 Block blocks[MAX_BLOCK_ID + 1];
 
@@ -123,6 +127,19 @@ void init_blocks() {
         },
         .solid = true,
         .transparent = false
+    };
+    blocks[BLOCK_LEAVES] = (Block) {
+        .type = BLOCK_LEAVES,
+        .tex_coords = {
+            .neg_x = (vec2s) {3 / 8.0f, 1.0f / 8.0f},
+            .pos_x = (vec2s) {3 / 8.0f, 1.0f / 8.0f},
+            .neg_y = (vec2s) {3 / 8.0f, 1.0f / 8.0f},
+            .pos_y = (vec2s) {3 / 8.0f, 1.0f / 8.0f},
+            .neg_z = (vec2s) {3 / 8.0f, 1.0f / 8.0f},
+            .pos_z = (vec2s) {3 / 8.0f, 1.0f / 8.0f},
+        },
+        .solid = true,
+        .transparent = true
     };
 }
 
@@ -675,6 +692,9 @@ static void remove_stored_chunk(u32 index) {
 }
 
 static void gen_chunk(Chunk *chunk) {
+    ivec3s tree_positions[CHUNK_WIDTH * CHUNK_HEIGHT];
+    u32 tree_count = 0;
+
     for(i32 i = world.chunk_storage.count - 1; i >= 0; i--) {
         StoredChunk *c = &world.chunk_storage.chunks[i];
         if(c->pos.x == chunk->pos.x && c->pos.y == chunk->pos.y) {
@@ -697,6 +717,37 @@ static void gen_chunk(Chunk *chunk) {
                     chunk_set(chunk, &blocks[BLOCK_DIRT], x, y, z);
                 } else {
                     chunk_set(chunk, &blocks[BLOCK_STONE], x, y, z);
+                }
+            }
+
+            u32 num = xorshift32() % TREE_GENERATION_CHANCE;
+            if(!num) {
+                tree_positions[tree_count] = (ivec3s) {x, h + 1, z};
+                tree_count++;
+            }
+        }
+    }
+
+    for(u32 i = 0; i < tree_count; i++) {
+        ivec3s pos = tree_positions[i];
+        for(u32 y = pos.y; y < pos.y + 6; y++) {
+            chunk_set(chunk, &blocks[BLOCK_LOG], pos.x, y, pos.z);
+        }
+
+        for(i32 x = pos.x - 2; x <= pos.x + 2; x++) {
+            for(i32 z = pos.z - 2; z <= pos.z + 2; z++) {
+                if(x != pos.x || z != pos.z) {
+                    world_set(&blocks[BLOCK_LEAVES], x + chunk->pos.x * 16, pos.y + 3, z + chunk->pos.y * 16);
+                    world_set(&blocks[BLOCK_LEAVES], x + chunk->pos.x * 16, pos.y + 4, z + chunk->pos.y * 16);
+                }
+            }
+        }
+
+        for(i32 x = pos.x - 1; x <= pos.x + 1; x++) {
+            for(i32 z = pos.z - 1; z <= pos.z + 1; z++) {
+                if(x != pos.x || z != pos.z) {
+                    world_set(&blocks[BLOCK_LEAVES], x + chunk->pos.x * 16, pos.y + 5, z + chunk->pos.y * 16);
+                    world_set(&blocks[BLOCK_LEAVES], x + chunk->pos.x * 16, pos.y + 6, z + chunk->pos.y * 16);
                 }
             }
         }
@@ -728,6 +779,8 @@ World *init_world() {
 
     world.block_set_list.block_sets = NULL;
     world.block_set_list.count = 0;
+
+    set_xorshift32_seed(1);
 
     return &world;
 }

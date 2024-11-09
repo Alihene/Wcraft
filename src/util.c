@@ -10,12 +10,12 @@ bool aabb_colliding(AABB a, AABB b) {
 	vec3s other_max = glms_vec3_add(b.pos, b.size);
 
 	return
-		min.x <= other_max.x &&
-		max.x >= other_min.x &&
-		min.y <= other_max.y &&
-		max.y >= other_min.y &&
-		min.z <= other_max.z &&
-		max.z >= other_min.z;
+		min.x < other_max.x &&
+		max.x > other_min.x &&
+		min.y < other_max.y &&
+		max.y > other_min.y &&
+		min.z < other_max.z &&
+		max.z > other_min.z;
 }
 
 u64 ns_now() {

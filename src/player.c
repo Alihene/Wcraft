@@ -7,6 +7,8 @@
 #define HITBOX_HEIGHT 1.8f
 #define HITBOX_WIDTH_OFFSET ((1.0f - HITBOX_WIDTH) / 2.0f)
 
+#define ACCELERATION 20.0f
+
 Player player;
 
 void init_player() {
@@ -45,13 +47,11 @@ static void move_xz(vec3s original_pos, vec3s delta, f32 speed) {
                         .pos = (vec3s) {x, y, z},
                         .size = (vec3s) {1.0f, 1.0f, 1.0f}
                     };
-                    while(aabb_colliding(player_aabb, block_aabb)) {
+                    if(aabb_colliding(player_aabb, block_aabb)) {
                         if(delta.x >= 0.0f) {
-                            player.pos.x -= 0.01f;
-                            player_aabb.pos.x -= 0.01f;
+                            player.pos.x = floorf(player.pos.x) + HITBOX_WIDTH_OFFSET - 0.01f;
                         } else {
-                            player.pos.x += 0.01f;
-                            player_aabb.pos.x += 0.01f;
+                            player.pos.x = ceilf(player.pos.x) - HITBOX_WIDTH_OFFSET + 0.01f;
                         }
                     }
                 }
@@ -80,13 +80,11 @@ static void move_xz(vec3s original_pos, vec3s delta, f32 speed) {
                         .pos = (vec3s) {x, y, z},
                         .size = (vec3s) {1.0f, 1.0f, 1.0f}
                     };
-                    while(aabb_colliding(player_aabb, block_aabb)) {
+                    if(aabb_colliding(player_aabb, block_aabb)) {
                         if(delta.z >= 0.0f) {
-                            player.pos.z -= 0.01f;
-                            player_aabb.pos.z -= 0.01f;
+                            player.pos.z = floorf(player.pos.z) + HITBOX_WIDTH_OFFSET - 0.01f;
                         } else {
-                            player.pos.z += 0.01f;
-                            player_aabb.pos.z += 0.01f;
+                            player.pos.z = ceilf(player.pos.z) - HITBOX_WIDTH_OFFSET + 0.01f;
                         }
                     }
                 }
@@ -120,13 +118,11 @@ static void move_y(vec3s original_pos, f32 delta_y, f32 speed) {
                         .pos = (vec3s) {x, y, z},
                         .size = (vec3s) {1.0f, 1.0f, 1.0f}
                     };
-                    while(aabb_colliding(player_aabb, block_aabb)) {
+                    if(aabb_colliding(player_aabb, block_aabb)) {
                         if(delta_y >= 0.0f) {
-                            player.pos.y -= 0.01f;
-                            player_aabb.pos.y -= 0.01f;
+                            player.pos.y = floorf(player.pos.y) - 1.0f;
                         } else {
-                            player.pos.y += 0.01f;
-                            player_aabb.pos.y += 0.01f;
+                            player.pos.y = ceilf(player.pos.y);
                         }
                     }
                 }
@@ -141,7 +137,15 @@ void update_player(f32 timestep, const u8 *keys) {
     i32 block_pos_z = floorf(player.pos.z);
     vec3s original_pos = player.pos;
 
-    f32 speed = 10.0f * timestep;
+    Block *block_below = world_get(block_pos_x, block_pos_y - 1, block_pos_z);
+    bool is_on_block = block_below && block_below->solid && player.pos.y - block_pos_y < 0.02f;
+    if(!is_on_block) {
+        player.y_velocity -= ACCELERATION * timestep;
+    } else {
+        player.y_velocity = 0;
+    }
+
+    f32 speed = 4.0f * timestep;
     if(keys[SDL_GetScancodeFromKey(SDLK_w)]) {
         vec3s delta = (vec3s) {
             cosf(glm_rad(player.camera.yaw)),
@@ -167,11 +171,11 @@ void update_player(f32 timestep, const u8 *keys) {
         move_xz(original_pos, delta, speed);
     }
     if(keys[SDL_GetScancodeFromKey(SDLK_SPACE)]) {
-        move_y(original_pos, 1.0f, speed);
+        if(is_on_block) {
+            player.y_velocity = 7.5f;
+        }
     }
-    if(keys[SDL_GetScancodeFromKey(SDLK_LSHIFT)]) {
-        move_y(original_pos, -1.0f, speed);
-    }
+    move_y(original_pos, player.y_velocity, timestep);
 
     player.camera.pos = player.pos;
     player.camera.pos.x += 0.5f;
