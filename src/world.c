@@ -6,9 +6,6 @@
 // Tree generation chance per block (1/n)
 #define TREE_GENERATION_CHANCE 200
 
-// UVS are wrong without this, idk why
-#define PIXEL_CORRECTION 0.008f
-
 Block blocks[MAX_BLOCK_ID + 1];
 
 World world;
@@ -202,41 +199,41 @@ static void try_mesh_left_face(Chunk *chunk, u8 x, u8 y, u8 z) {
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z + 1},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
     tex_coords.x += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
     tex_coords.y += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y + 1, z},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y + 1, z},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
     tex_coords.x -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y + 1, z + 1},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
     tex_coords.y -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z + 1},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
 }
@@ -272,41 +269,41 @@ static void try_mesh_right_face(Chunk *chunk, u8 x, u8 y, u8 z) {
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y, z},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
     tex_coords.x += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y, z + 1},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
     tex_coords.y += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y + 1, z + 1},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y + 1, z + 1},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
     tex_coords.x -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y + 1, z},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
     tex_coords.y -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y, z},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.8f
     });
 }
@@ -341,41 +338,41 @@ static void try_mesh_front_face(Chunk *chunk, u8 x, u8 y, u8 z) {
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
     tex_coords.x += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y, z},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
     tex_coords.y += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y + 1, z},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y + 1, z},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
     tex_coords.x -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y + 1, z},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
     tex_coords.y -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
 }
@@ -412,41 +409,41 @@ static void try_mesh_back_face(Chunk *chunk, u8 x, u8 y, u8 z) {
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y, z + 1},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
     tex_coords.x += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z + 1},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
     tex_coords.y += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y + 1, z + 1},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y + 1, z + 1},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
     tex_coords.x -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y + 1, z + 1},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
     tex_coords.y -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y, z + 1},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.85f
     });
 }
@@ -470,41 +467,41 @@ static void try_mesh_bottom_face(Chunk *chunk, u8 x, u8 y, u8 z) {
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.6f
     });
     tex_coords.x += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y, z},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.6f
     });
     tex_coords.y += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y, z + 1},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.6f
     });
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y, z + 1},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.6f
     });
     tex_coords.x -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z + 1},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.6f
     });
     tex_coords.y -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y, z},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         0.6f
     });
 }
@@ -528,41 +525,41 @@ static void try_mesh_top_face(Chunk *chunk, u8 x, u8 y, u8 z) {
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y + 1, z + 1},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         1.0f
     });
     tex_coords.x += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y + 1, z + 1},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         1.0f
     });
     tex_coords.y += 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y + 1, z},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         1.0f
     });
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x + 1, y + 1, z},
         1.0f,
-        rpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         1.0f
     });
     tex_coords.x -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y + 1, z},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         1.0f
     });
     tex_coords.y -= 1.0f / 8.0f;
     push_vertex(chunk, &(Vertex) {
         (vec3s) {x, y + 1, z + 1},
         1.0f,
-        lpc(tex_coords, PIXEL_CORRECTION),
+        tex_coords,
         1.0f
     });
 }
@@ -750,8 +747,8 @@ static void gen_chunk(Chunk *chunk) {
             for(i32 z = pos.z - 1; z <= pos.z + 1; z++) {
                 if(x != pos.x || z != pos.z) {
                     world_set(&blocks[BLOCK_LEAVES], x + chunk->pos.x * 16, pos.y + 5, z + chunk->pos.y * 16);
-                    world_set(&blocks[BLOCK_LEAVES], x + chunk->pos.x * 16, pos.y + 6, z + chunk->pos.y * 16);
                 }
+                world_set(&blocks[BLOCK_LEAVES], x + chunk->pos.x * 16, pos.y + 6, z + chunk->pos.y * 16);
             }
         }
     }

@@ -18,7 +18,6 @@ typedef struct {
     SDL_Texture *texture;
     u32 pixels[SCREEN_WIDTH * SCREEN_HEIGHT];
     i32 depth_buffer[SCREEN_WIDTH * SCREEN_HEIGHT];
-    bool depth_test;
 } RenderState;
 
 typedef struct {
@@ -64,8 +63,5 @@ void draw_triangles(
     mat4s model);
 void draw_triangle(const Vertex *vertices, const Texture *texture);
 void draw_triangle_raw(RawVertex *vertices, const Texture *texture);
-
-vec2s lpc(vec2s tex_coords, f32 delta);
-vec2s rpc(vec2s tex_coords, f32 delta);
 
 #endif

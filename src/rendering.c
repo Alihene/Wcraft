@@ -86,7 +86,6 @@ RenderState *init_rendering(Window *window) {
     SDL_SetTextureScaleMode(render_state.texture, SDL_SCALEMODE_NEAREST);
 
     memset(render_state.depth_buffer, 0, sizeof(render_state.depth_buffer));
-    render_state.depth_test = true;
 
     return &render_state;
 }
@@ -114,9 +113,8 @@ void present() {
     SDL_SetRenderDrawBlendMode(render_state.renderer, SDL_BLENDMODE_NONE);
 
     memset32(render_state.pixels, 0xFFFFAE00, sizeof(render_state.pixels));
-    if(render_state.depth_test) {
-        memset(render_state.depth_buffer, 0, sizeof(render_state.depth_buffer));
-    }
+    memset(render_state.depth_buffer, 0, sizeof(render_state.depth_buffer));
+
     SDL_RenderClear(render_state.renderer);
 
     SDL_RenderTexture(render_state.renderer, render_state.texture, NULL, NULL);
@@ -305,6 +303,11 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     vec2s uv1 = vertices[0].uv;
     vec2s uv2 = vertices[1].uv;
     vec2s uv3 = vertices[2].uv;
+    f32 min_uvx = SDL_min(uv1.x, SDL_min(uv2.x, uv3.x));
+    f32 min_uvy = SDL_min(uv1.y, SDL_min(uv2.y, uv3.y));
+
+    f32 max_uvx = SDL_max(uv1.x, SDL_max(uv2.x, uv3.x));
+    f32 max_uvy = SDL_max(uv1.y, SDL_max(uv2.y, uv3.y));
 
     i32 min_x = min(x1, x2, x3);
     i32 min_y = min(y1, y2, y3);
@@ -384,42 +387,22 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                     + bc.z * z2;
 
                 // Don't do per-pixel calculations if the pixel isn't visible!
-                if(render_state.depth_test) {
-                    i32 d = render_state.depth_buffer[y * SCREEN_WIDTH + x];
-                    if(d <= 0 || depth <= d) {
-                        tex_coords.x = (bc.x * uv1.x + bc.y * uv3.x + bc.z * uv2.x);
-                        tex_coords.y = (bc.x * uv1.y + bc.y * uv3.y + bc.z * uv2.y);
-
-                        u32 index =
-                            (u32)((tex_coords.x * (texture->width - 1)))
-                            + (u32)(tex_coords.y * (texture->height - 1)) * texture->width;
-
-                        index = SDL_clamp(index, 0, texture->width * texture->height);
-                        u32 color = ((u32*) texture->data)[index];
-                        // Don't draw if alpha value is 0
-                        if(color & 0xFF000000) {
-                            f32 c1 = ((u8*) &color)[2];
-                            f32 c2 = ((u8*) &color)[1];
-                            f32 c3 = ((u8*) &color)[0];
-                            c1 *= brightness;
-                            c2 *= brightness;
-                            c3 *= brightness;
-                            ((u8*) &color)[2] = (u8) c1;
-                            ((u8*) &color)[1] = (u8) c2;
-                            ((u8*) &color)[0] = (u8) c3;
-                        
-                            render_state.depth_buffer[y * SCREEN_WIDTH + x] = depth;
-                            SET_PIXEL(x, y, color);
-                        }
-                    }
-                } else {
+                i32 d = render_state.depth_buffer[y * SCREEN_WIDTH + x];
+                if(d <= 0 || depth <= d) {
                     tex_coords.x = (bc.x * uv1.x + bc.y * uv3.x + bc.z * uv2.x);
                     tex_coords.y = (bc.x * uv1.y + bc.y * uv3.y + bc.z * uv2.y);
 
-                    u32 index =
-                        (u32)((tex_coords.x * (texture->width - 1)))
-                        + (u32)(tex_coords.y * (texture->height - 1)) * texture->width;
+                    // Floating point precision is a pain in the ass
+                    tex_coords.x = SDL_clamp(tex_coords.x, min_uvx, max_uvx - 0.0078125f);
+                    tex_coords.y = SDL_clamp(tex_coords.y, min_uvy, max_uvy - 0.0078125f);
 
+                    u32 index_width = (tex_coords.x * (texture->width));
+                    index_width = SDL_clamp(index_width, 0, texture->width);
+                    u32 index_height = tex_coords.y * texture->height;
+                    index_height = SDL_clamp(index_height, 0, texture->height);
+                    index_height *= texture->width;
+
+                    u32 index = index_width + index_height;
                     index = SDL_clamp(index, 0, texture->width * texture->height);
                     u32 color = ((u32*) texture->data)[index];
                     // Don't draw if alpha value is 0
@@ -434,6 +417,7 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                         ((u8*) &color)[1] = (u8) c2;
                         ((u8*) &color)[0] = (u8) c3;
                     
+                        render_state.depth_buffer[y * SCREEN_WIDTH + x] = depth;
                         SET_PIXEL(x, y, color);
                     }
                 }
@@ -454,14 +438,4 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
         raw_bc_row.y += dv_row;
         raw_bc_row.z += dw_row;
     }
-}
-
-vec2s lpc(vec2s tex_coords, f32 delta) {
-    tex_coords.x += delta;
-    return tex_coords;
-}
-
-vec2s rpc(vec2s tex_coords, f32 delta) {
-    tex_coords.x -= delta;
-    return tex_coords;
 }
