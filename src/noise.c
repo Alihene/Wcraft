@@ -41,8 +41,8 @@ void set_seed(i32 s) {
 
 f32 noise2d(f32 x, f32 y) {
     // Floor
-    i32 ix = x;
-    i32 iy = y;
+    i32 ix = floorf(x);
+    i32 iy = floorf(y);
     f32 x_frac = x - ix;
     f32 y_frac = y - iy;
     i32 s = noise2(ix, iy);
