@@ -11,7 +11,8 @@ typedef struct {
     Camera camera;
     u32 hotbar_slot;
 
-    f32 y_velocity;
+    f32 y_velocity; // in m/s
+    bool on_ground;
 } Player;
 
 extern Player player;

@@ -7,7 +7,7 @@
 #define CHUNK_HEIGHT 32
 #define CHUNK_DEPTH 16
 
-#define LOAD_DISTANCE 4
+#define LOAD_DISTANCE 6
 // Side width of the square of loaded chunks
 #define LOAD_WIDTH (LOAD_DISTANCE * 2 + 1)
 

@@ -7,7 +7,14 @@
 #define HITBOX_HEIGHT 1.8f
 #define HITBOX_WIDTH_OFFSET ((1.0f - HITBOX_WIDTH) / 2.0f)
 
-#define ACCELERATION 20.0f
+// Acceleration in m/s^2
+#define ACCELERATION 15.0f
+
+// In m/s
+#define JUMP_VELOCITY 7.0f
+#define PLAYER_SPEED 3.5f
+
+#define F32_EPSILON 0.001f
 
 Player player;
 
@@ -16,6 +23,7 @@ void init_player() {
     player.pos = (vec3s) {0.0f, 20.0f, 0.0f};
     player.hotbar_slot = 1;
     player.y_velocity = 0.0f;
+    player.on_ground = false;
 }
 
 // Move and handle collisions on the xz plane
@@ -120,7 +128,8 @@ static void move_y(vec3s original_pos, f32 delta_y, f32 speed) {
                     };
                     if(aabb_colliding(player_aabb, block_aabb)) {
                         if(delta_y >= 0.0f) {
-                            player.pos.y = floorf(player.pos.y) - 1.0f;
+                            player.pos.y = floorf(player.pos.y) + 0.2f - 0.01f;
+                            player.y_velocity = 0.0f;
                         } else {
                             player.pos.y = ceilf(player.pos.y);
                         }
@@ -137,15 +146,7 @@ void update_player(f32 timestep, const u8 *keys) {
     i32 block_pos_z = floorf(player.pos.z);
     vec3s original_pos = player.pos;
 
-    Block *block_below = world_get(block_pos_x, block_pos_y - 1, block_pos_z);
-    bool is_on_block = block_below && block_below->solid && player.pos.y - block_pos_y < 0.02f;
-    if(!is_on_block) {
-        player.y_velocity -= ACCELERATION * timestep;
-    } else {
-        player.y_velocity = 0;
-    }
-
-    f32 speed = 4.0f * timestep;
+    f32 speed = PLAYER_SPEED * timestep;
     if(keys[SDL_GetScancodeFromKey(SDLK_w)]) {
         vec3s delta = (vec3s) {
             cosf(glm_rad(player.camera.yaw)),
@@ -171,11 +172,17 @@ void update_player(f32 timestep, const u8 *keys) {
         move_xz(original_pos, delta, speed);
     }
     if(keys[SDL_GetScancodeFromKey(SDLK_SPACE)]) {
-        if(is_on_block) {
-            player.y_velocity = 7.5f;
+        if(player.on_ground) {
+            player.y_velocity = JUMP_VELOCITY;
         }
     }
+    player.y_velocity -= ACCELERATION * timestep;
     move_y(original_pos, player.y_velocity, timestep);
+    f32 y_delta = player.pos.y - original_pos.y;
+    player.on_ground = y_delta <= 0 && fabsf(y_delta) <= F32_EPSILON;
+    if(player.on_ground) {
+        player.y_velocity = 0;
+    }
 
     player.camera.pos = player.pos;
     player.camera.pos.x += 0.5f;

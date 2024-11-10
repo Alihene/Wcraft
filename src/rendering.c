@@ -5,11 +5,11 @@
 
 #include "player.h"
 
+#include <xmmintrin.h>
+
 static RenderState render_state;
 
 #define SET_PIXEL(x, y, color) if(x >= 0 && y >= 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) render_state.pixels[((y) * SCREEN_WIDTH) + (x)] = (color);
-
-#define INVERSE_256 0.00390625f
 
 static i32 max(i32 a, i32 b, i32 c) {
     if(a >= b && a >= c) {
@@ -365,6 +365,7 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     f32 dw = (f32)((y3 - y1)) * inverse_area * z2f / 2.0f;
 
     f32 brightness = vertices[0].brightness;
+    u32 fp_brightness = (1 << 10) * brightness;
 
     for(i32 y = min_y; y < max_y; y++) {
         i32 e1 = e_row1;
@@ -372,6 +373,7 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
         i32 e3 = e_row3;
 
         vec3s raw_bc = raw_bc_row;
+        i32 *depth_row = &render_state.depth_buffer[y * SCREEN_WIDTH];
 
         for(i32 x = min_x; x < max_x; x++) {
             if((e1 | e2 | e3) >= 0) {
@@ -387,7 +389,7 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                     + bc.z * z2;
 
                 // Don't do per-pixel calculations if the pixel isn't visible!
-                i32 d = render_state.depth_buffer[y * SCREEN_WIDTH + x];
+                i32 d = depth_row[x];
                 if(d <= 0 || depth <= d) {
                     tex_coords.x = (bc.x * uv1.x + bc.y * uv3.x + bc.z * uv2.x);
                     tex_coords.y = (bc.x * uv1.y + bc.y * uv3.y + bc.z * uv2.y);
@@ -407,15 +409,15 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                     u32 color = ((u32*) texture->data)[index];
                     // Don't draw if alpha value is 0
                     if(color & 0xFF000000) {
-                        f32 c1 = ((u8*) &color)[2];
-                        f32 c2 = ((u8*) &color)[1];
-                        f32 c3 = ((u8*) &color)[0];
-                        c1 *= brightness;
-                        c2 *= brightness;
-                        c3 *= brightness;
-                        ((u8*) &color)[2] = (u8) c1;
-                        ((u8*) &color)[1] = (u8) c2;
-                        ((u8*) &color)[0] = (u8) c3;
+                        u8 c1 = ((u8*) &color)[2];
+                        u8 c2 = ((u8*) &color)[1];
+                        u8 c3 = ((u8*) &color)[0];
+                        c1 = (c1 * fp_brightness) >> 10;
+                        c2 = (c2 * fp_brightness) >> 10;
+                        c3 = (c3 * fp_brightness) >> 10;
+                        ((u8*) &color)[2] = c1;
+                        ((u8*) &color)[1] = c2;
+                        ((u8*) &color)[0] = c3;
                     
                         render_state.depth_buffer[y * SCREEN_WIDTH + x] = depth;
                         SET_PIXEL(x, y, color);
