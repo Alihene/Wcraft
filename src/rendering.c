@@ -290,28 +290,29 @@ void draw_triangle(const Vertex *vertices, const Texture *texture) {
 }
 
 void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
-    i32 x1 = vertices[0].pos.x;
-    i32 x2 = vertices[1].pos.x;
-    i32 x3 = vertices[2].pos.x;
-    i32 y1 = vertices[0].pos.y;
-    i32 y2 = vertices[1].pos.y;
-    i32 y3 = vertices[2].pos.y;
+    const i32 x1 = vertices[0].pos.x;
+    const i32 x2 = vertices[1].pos.x;
+    const i32 x3 = vertices[2].pos.x;
+    const i32 y1 = vertices[0].pos.y;
+    const i32 y2 = vertices[1].pos.y;
+    const i32 y3 = vertices[2].pos.y;
     i32 z1 = vertices[0].pos.z;
     i32 z2 = vertices[1].pos.z;
     i32 z3 = vertices[2].pos.z;
 
-    vec2s uv1 = vertices[0].uv;
-    vec2s uv2 = vertices[1].uv;
-    vec2s uv3 = vertices[2].uv;
-    f32 min_uvx = SDL_min(uv1.x, SDL_min(uv2.x, uv3.x));
-    f32 min_uvy = SDL_min(uv1.y, SDL_min(uv2.y, uv3.y));
+    const vec2s uv1 = vertices[0].uv;
+    const vec2s uv2 = vertices[1].uv;
+    const vec2s uv3 = vertices[2].uv;
+    const f32 min_uvx = SDL_min(uv1.x, SDL_min(uv2.x, uv3.x));
+    const f32 min_uvy = SDL_min(uv1.y, SDL_min(uv2.y, uv3.y));
+    const f32 max_uvx = SDL_max(uv1.x, SDL_max(uv2.x, uv3.x)) - 0.0078125f;
+    const f32 max_uvy = SDL_max(uv1.y, SDL_max(uv2.y, uv3.y)) - 0.0078125f;
 
-    f32 max_uvx = SDL_max(uv1.x, SDL_max(uv2.x, uv3.x));
-    f32 max_uvy = SDL_max(uv1.y, SDL_max(uv2.y, uv3.y));
+    const __m128 v_uv_x = _mm_setr_ps(uv1.x, uv3.x, uv2.x, 0.0f);
+    const __m128 v_uv_y = _mm_setr_ps(uv1.y, uv3.y, uv2.y, 0.0f);
 
     i32 min_x = min(x1, x2, x3);
     i32 min_y = min(y1, y2, y3);
-
     i32 max_x = max(x1, x2, x3);
     i32 max_y = max(y1, y2, y3);
 
@@ -328,6 +329,8 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     z1 = SDL_clamp(z1, 0, DEPTH_PRECISION + 1);
     z2 = SDL_clamp(z2, 0, DEPTH_PRECISION + 1);
     z3 = SDL_clamp(z3, 0, DEPTH_PRECISION + 1);
+
+    __m128 v_z = _mm_setr_ps(z1, z3, z2, 0.0f);
 
     i32 e_row1, e_row2, e_row3;
     e_row1 = edge_function((ivec2s){x1, y1}, (ivec2s){x3, y3}, (ivec2s){min_x, min_y});
@@ -357,46 +360,47 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     raw_bc_row.x = (f32) e_row2 * inverse_area * z1f / 2.0f;
     raw_bc_row.y = (f32) e_row3 * inverse_area * z3f / 2.0f;
     raw_bc_row.z = (f32) e_row1 * inverse_area * z2f / 2.0f;
-    f32 du_row = (f32)((x3 - x2)) * inverse_area * z1f / 2.0f;
-    f32 dv_row = (f32)((x2 - x1)) * inverse_area * z3f / 2.0f;
-    f32 dw_row = (f32)((x1 - x3)) * inverse_area * z2f / 2.0f;
-    f32 du = (f32)((y2 - y3)) * inverse_area * z1f / 2.0f;
-    f32 dv = (f32)((y1 - y2)) * inverse_area * z3f / 2.0f;
-    f32 dw = (f32)((y3 - y1)) * inverse_area * z2f / 2.0f;
+    const f32 du_row = (f32)((x3 - x2)) * inverse_area * z1f / 2.0f;
+    const f32 dv_row = (f32)((x2 - x1)) * inverse_area * z3f / 2.0f;
+    const f32 dw_row = (f32)((x1 - x3)) * inverse_area * z2f / 2.0f;
+    const f32 du = (f32)((y2 - y3)) * inverse_area * z1f / 2.0f;
+    const f32 dv = (f32)((y1 - y2)) * inverse_area * z3f / 2.0f;
+    const f32 dw = (f32)((y3 - y1)) * inverse_area * z2f / 2.0f;
 
-    f32 brightness = vertices[0].brightness;
-    u32 fp_brightness = (1 << 10) * brightness;
+    __m128 v_raw_bc_row = _mm_setr_ps(raw_bc_row.x, raw_bc_row.y, raw_bc_row.z, 0.0f);
+    __m128 v_dbc_row = _mm_setr_ps(du_row, dv_row, dw_row, 0.0f);
+    __m128 v_dbc = _mm_setr_ps(du, dv, dw, 0.0f);
+
+    const f32 brightness = vertices[0].brightness;
+    const u32 fp_brightness = (1 << 10) * brightness;
 
     for(i32 y = min_y; y < max_y; y++) {
         i32 e1 = e_row1;
         i32 e2 = e_row2;
         i32 e3 = e_row3;
 
-        vec3s raw_bc = raw_bc_row;
+        __m128 v_raw_bc = v_raw_bc_row;
         i32 *depth_row = &render_state.depth_buffer[y * SCREEN_WIDTH];
 
         for(i32 x = min_x; x < max_x; x++) {
             if((e1 | e2 | e3) >= 0) {
-                vec3s bc = raw_bc;
-                f32 inverse_sum = 1.0f / (bc.x + bc.y + bc.z);
-                bc.x *= inverse_sum;
-                bc.y *= inverse_sum;
-                bc.z *= inverse_sum;
+                __m128 v_bc = v_raw_bc;
+                f32 sum = hsum_ps_sse3(v_bc);
+                const __m128 v_inverse_sum = _mm_rcp_ps(_mm_set1_ps(sum));
+                v_bc = _mm_mul_ps(v_bc, v_inverse_sum);
 
-                i32 depth =
-                    bc.x * z1
-                    + bc.y * z3
-                    + bc.z * z2;
+                const __m128 v_depth = _mm_mul_ps(v_bc, v_z);
+                const i32 depth = hsum_ps_sse3(v_depth);
 
                 // Don't do per-pixel calculations if the pixel isn't visible!
-                i32 d = depth_row[x];
+                const i32 d = depth_row[x];
                 if(d <= 0 || depth <= d) {
-                    tex_coords.x = (bc.x * uv1.x + bc.y * uv3.x + bc.z * uv2.x);
-                    tex_coords.y = (bc.x * uv1.y + bc.y * uv3.y + bc.z * uv2.y);
+                    tex_coords.x = hsum_ps_sse3(_mm_mul_ps(v_bc, v_uv_x));
+                    tex_coords.y = hsum_ps_sse3(_mm_mul_ps(v_bc, v_uv_y));
 
                     // Floating point precision is a pain in the ass
-                    tex_coords.x = SDL_clamp(tex_coords.x, min_uvx, max_uvx - 0.0078125f);
-                    tex_coords.y = SDL_clamp(tex_coords.y, min_uvy, max_uvy - 0.0078125f);
+                    tex_coords.x = SDL_clamp(tex_coords.x, min_uvx, max_uvx);
+                    tex_coords.y = SDL_clamp(tex_coords.y, min_uvy, max_uvy);
 
                     u32 index_width = (tex_coords.x * (texture->width));
                     index_width = SDL_clamp(index_width, 0, texture->width);
@@ -404,9 +408,13 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                     index_height = SDL_clamp(index_height, 0, texture->height);
                     index_height *= texture->width;
 
-                    u32 index = index_width + index_height;
-                    index = SDL_clamp(index, 0, texture->width * texture->height);
+                    const u32 index =
+                        SDL_clamp(
+                            index_width + index_height,
+                            0,
+                            texture->width * texture->height);
                     u32 color = ((u32*) texture->data)[index];
+                    
                     // Don't draw if alpha value is 0
                     if(color & 0xFF000000) {
                         u8 c1 = ((u8*) &color)[2];
@@ -419,7 +427,7 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                         ((u8*) &color)[1] = c2;
                         ((u8*) &color)[0] = c3;
                     
-                        render_state.depth_buffer[y * SCREEN_WIDTH + x] = depth;
+                        depth_row[x] = depth;
                         SET_PIXEL(x, y, color);
                     }
                 }
@@ -428,16 +436,12 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
             e1 += de1;
             e2 += de2;
             e3 += de3;
-            raw_bc.x += du;
-            raw_bc.y += dv;
-            raw_bc.z += dw;
+            v_raw_bc = _mm_add_ps(v_raw_bc, v_dbc);
         }
 
         e_row1 += de1_row;
         e_row2 += de2_row;
         e_row3 += de3_row;
-        raw_bc_row.x += du_row;
-        raw_bc_row.y += dv_row;
-        raw_bc_row.z += dw_row;
+        v_raw_bc_row = _mm_add_ps(v_raw_bc_row, v_dbc_row);
     }
 }
