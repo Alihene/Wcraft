@@ -14,7 +14,7 @@
 #define JUMP_VELOCITY 7.0f
 #define PLAYER_SPEED 3.5f
 
-#define F32_EPSILON 0.001f
+#define MOVEMENT_EPSILON 0.01f
 
 Player player;
 
@@ -57,9 +57,9 @@ static void move_xz(vec3s original_pos, vec3s delta, f32 speed) {
                     };
                     if(aabb_colliding(player_aabb, block_aabb)) {
                         if(delta.x >= 0.0f) {
-                            player.pos.x = floorf(player.pos.x) + HITBOX_WIDTH_OFFSET - 0.01f;
+                            player.pos.x = floorf(player.pos.x) + HITBOX_WIDTH_OFFSET - MOVEMENT_EPSILON;
                         } else {
-                            player.pos.x = ceilf(player.pos.x) - HITBOX_WIDTH_OFFSET + 0.01f;
+                            player.pos.x = ceilf(player.pos.x) - HITBOX_WIDTH_OFFSET + MOVEMENT_EPSILON;
                         }
                     }
                 }
@@ -90,9 +90,9 @@ static void move_xz(vec3s original_pos, vec3s delta, f32 speed) {
                     };
                     if(aabb_colliding(player_aabb, block_aabb)) {
                         if(delta.z >= 0.0f) {
-                            player.pos.z = floorf(player.pos.z) + HITBOX_WIDTH_OFFSET - 0.01f;
+                            player.pos.z = floorf(player.pos.z) + HITBOX_WIDTH_OFFSET - MOVEMENT_EPSILON;
                         } else {
-                            player.pos.z = ceilf(player.pos.z) - HITBOX_WIDTH_OFFSET + 0.01f;
+                            player.pos.z = ceilf(player.pos.z) - HITBOX_WIDTH_OFFSET + MOVEMENT_EPSILON;
                         }
                     }
                 }
@@ -128,7 +128,7 @@ static void move_y(vec3s original_pos, f32 delta_y, f32 speed) {
                     };
                     if(aabb_colliding(player_aabb, block_aabb)) {
                         if(delta_y >= 0.0f) {
-                            player.pos.y = floorf(player.pos.y) + 0.2f - 0.01f;
+                            player.pos.y = floorf(player.pos.y) + 0.2f - MOVEMENT_EPSILON;
                             player.y_velocity = 0.0f;
                         } else {
                             player.pos.y = ceilf(player.pos.y);
@@ -179,7 +179,7 @@ void update_player(f32 timestep, const u8 *keys) {
     player.y_velocity -= ACCELERATION * timestep;
     move_y(original_pos, player.y_velocity, timestep);
     f32 y_delta = player.pos.y - original_pos.y;
-    player.on_ground = y_delta <= 0 && fabsf(y_delta) <= F32_EPSILON;
+    player.on_ground = y_delta <= 0 && fabsf(y_delta) <= MOVEMENT_EPSILON * 0.1f;
     if(player.on_ground) {
         player.y_velocity = 0;
     }
