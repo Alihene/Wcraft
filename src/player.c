@@ -246,10 +246,25 @@ void try_break_block() {
 void try_place_block() {
     ivec3s place_pos;
     if(raycast(player.camera.front, 5, NULL, &place_pos)) {
-        world_set_and_mesh(
-            &blocks[player.hotbar_slot],
-            place_pos.x,
-            place_pos.y,
-            place_pos.z);
+        AABB player_aabb = (AABB) {
+            .pos = (vec3s) {
+                player.pos.x + HITBOX_WIDTH_OFFSET,
+                player.pos.y,
+                player.pos.z + HITBOX_WIDTH_OFFSET
+            },
+            .size = (vec3s) {HITBOX_WIDTH, HITBOX_HEIGHT, HITBOX_WIDTH}
+        };
+        AABB block_aabb = (AABB) {
+            .pos = (vec3s) {place_pos.x, place_pos.y, place_pos.z},
+            .size = (vec3s) {1.0f, 1.0f, 1.0f}
+        };
+
+        if(!aabb_colliding(player_aabb, block_aabb)) {
+            world_set_and_mesh(
+                &blocks[player.hotbar_slot],
+                place_pos.x,
+                place_pos.y,
+                place_pos.z);
+        }
     }
 }
