@@ -3,6 +3,8 @@
 
 #include "rendering.h"
 
+#include <pthread.h>
+
 #define CHUNK_WIDTH 16
 #define CHUNK_HEIGHT 32
 #define CHUNK_DEPTH 16
@@ -57,6 +59,7 @@ typedef struct {
         u32 vertex_count;
         u32 vertex_count_alloc;
         bool should_update;
+        bool being_rendered;
     } mesh;
 
     u8 blocks[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH];
@@ -83,6 +86,8 @@ typedef struct {
         u32 count;
         u32 allocated;
     } chunk_storage;
+
+    pthread_mutex_t chunks_mutex;
 } World;
 
 void init_blocks();

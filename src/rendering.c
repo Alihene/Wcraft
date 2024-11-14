@@ -1,7 +1,7 @@
 #include "rendering.h"
 
 #include <stb_image/stb_image.h>
-#include <immintrin.h>
+#include <pthread.h>
 
 #include "player.h"
 
@@ -9,7 +9,10 @@
 
 static RenderState render_state;
 
-#define SET_PIXEL(x, y, color) if(x >= 0 && y >= 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) render_state.pixels[((y) * SCREEN_WIDTH) + (x)] = (color);
+pthread_mutex_t mutexes[SCREEN_HEIGHT];
+
+#define SET_PIXEL(x, y, color) \
+        render_state.pixels[((y) * SCREEN_WIDTH) + (x)] = (color);
 
 static i32 max(i32 a, i32 b, i32 c) {
     if(a >= b && a >= c) {
@@ -86,6 +89,13 @@ RenderState *init_rendering(Window *window) {
     SDL_SetTextureScaleMode(render_state.texture, SDL_SCALEMODE_NEAREST);
 
     memset(render_state.depth_buffer, 0, sizeof(render_state.depth_buffer));
+
+    for(u32 i = 0; i < SCREEN_HEIGHT; i++) {
+        if(pthread_mutex_init(&mutexes[i], NULL) != 0) {
+            fprintf(stderr, "Failed to init mutex %u\n", i);
+            return NULL;
+        }
+    }
 
     return &render_state;
 }
@@ -284,6 +294,27 @@ void draw_triangle(const Vertex *vertices, const Texture *texture) {
         .brightness = vertices[0].brightness
     };
 
+    const i32 x1 = raw_vertices[0].pos.x;
+    const i32 x2 = raw_vertices[1].pos.x;
+    const i32 x3 = raw_vertices[2].pos.x;
+    const i32 y1 = raw_vertices[0].pos.y;
+    const i32 y2 = raw_vertices[1].pos.y;
+    const i32 y3 = raw_vertices[2].pos.y;
+    i32 min_x = min(x1, x2, x3);
+    i32 min_y = min(y1, y2, y3);
+    i32 max_x = max(x1, x2, x3);
+    i32 max_y = max(y1, y2, y3);
+    min_x = SDL_clamp(min_x, 0, SCREEN_WIDTH);
+    max_x = SDL_clamp(max_x, 0, SCREEN_WIDTH);
+    min_y = SDL_clamp(min_y, 0, SCREEN_HEIGHT);
+    max_y = SDL_clamp(max_y, 0, SCREEN_HEIGHT);
+    i32 size_x = max_x - min_x;
+    i32 size_y = max_y - min_y;
+
+    if(size_x < 1 || size_y < 1) {
+        return;
+    }
+
     draw_triangle_raw(
         raw_vertices,
         texture);
@@ -337,12 +368,12 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     e_row2 = edge_function((ivec2s){x3, y3}, (ivec2s){x2, y2}, (ivec2s){min_x, min_y});
     e_row3 = edge_function((ivec2s){x2, y2}, (ivec2s){x1, y1}, (ivec2s){min_x, min_y});
 
-    i32 de1_row = x1 - x3;
-    i32 de2_row = x3 - x2;
-    i32 de3_row = x2 - x1;
-    i32 de1 = y3 - y1;
-    i32 de2 = y2 - y3;
-    i32 de3 = y1 - y2;
+    i32 de1_row = (x1 - x3);
+    i32 de2_row = (x3 - x2);
+    i32 de3_row = (x2 - x1);
+    i32 de1 = (y3 - y1);
+    i32 de2 = (y2 - y3);
+    i32 de3 = (y1 - y2);
 
     f32 z1f = (f32) z1 / (f32) DEPTH_PRECISION;
     f32 z2f = (f32) z2 / (f32) DEPTH_PRECISION;
@@ -370,19 +401,22 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
     __m128 v_raw_bc_row = _mm_setr_ps(raw_bc_row.x, raw_bc_row.y, raw_bc_row.z, 0.0f);
     __m128 v_dbc_row = _mm_setr_ps(du_row, dv_row, dw_row, 0.0f);
     __m128 v_dbc = _mm_setr_ps(du, dv, dw, 0.0f);
+    v_dbc_row = _mm_mul_ps(v_dbc_row, _mm_set1_ps(2.0f));
+    v_dbc = _mm_mul_ps(v_dbc, _mm_set1_ps(2.0f));
 
     const f32 brightness = vertices[0].brightness;
     const u32 fp_brightness = (1 << 10) * brightness;
 
-    for(i32 y = min_y; y < max_y; y++) {
+    for(i32 y = min_y; y < max_y; y += 2) {
         i32 e1 = e_row1;
         i32 e2 = e_row2;
         i32 e3 = e_row3;
 
         __m128 v_raw_bc = v_raw_bc_row;
         i32 *depth_row = &render_state.depth_buffer[y * SCREEN_WIDTH];
+        for(i32 x = min_x; x < max_x; x += 2) {
 
-        for(i32 x = min_x; x < max_x; x++) {
+
             if((e1 | e2 | e3) >= 0) {
                 __m128 v_bc = v_raw_bc;
                 f32 sum = hsum_ps_sse3(v_bc);
@@ -433,15 +467,15 @@ void draw_triangle_raw(RawVertex *vertices, const Texture *texture) {
                 }
             }
 
-            e1 += de1;
-            e2 += de2;
-            e3 += de3;
+            e1 += de1 * 2;
+            e2 += de2 * 2;
+            e3 += de3 * 2;
             v_raw_bc = _mm_add_ps(v_raw_bc, v_dbc);
         }
 
-        e_row1 += de1_row;
-        e_row2 += de2_row;
-        e_row3 += de3_row;
+        e_row1 += de1_row * 2;
+        e_row2 += de2_row * 2;
+        e_row3 += de3_row * 2;
         v_raw_bc_row = _mm_add_ps(v_raw_bc_row, v_dbc_row);
     }
 }

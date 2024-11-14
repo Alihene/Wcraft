@@ -7,8 +7,8 @@
 #include "util.h"
 #include "window.h"
 
-#define SCREEN_WIDTH 427
-#define SCREEN_HEIGHT 240
+#define SCREEN_WIDTH 854
+#define SCREEN_HEIGHT 480
 
 #define DEPTH_PRECISION (1 << 20)
 
