@@ -35,6 +35,7 @@ static Task *next_task(ThreadPool *pool) {
 
     if(task->next == NULL) {
         pool->last_task = NULL;
+        pool->first_task = NULL;
     } else {
         pool->last_task = task->next;
     }

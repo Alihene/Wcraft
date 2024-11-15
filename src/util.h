@@ -44,10 +44,17 @@ inline f32 hsum_ps_sse3(__m128 v) {
     return _mm_cvtss_f32(sums);
 }
 
-inline void sleep_ms(u64 ms) {
+inline void sleep_milliseconds(u64 ms) {
     struct timespec ts;
     ts.tv_sec = ms / 1000L;
     ts.tv_nsec = (ms % 1000L) * 1000000L;
+    nanosleep(&ts, NULL);
+}
+
+inline void sleep_microseconds(u64 ms) {
+    struct timespec ts;
+    ts.tv_sec = ms / 1000000L;
+    ts.tv_nsec = (ms % 1000000L) * 1000L;
     nanosleep(&ts, NULL);
 }
 

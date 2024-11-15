@@ -1,7 +1,7 @@
 #include "rendering.h"
 
 #include <stb_image/stb_image.h>
-#include <pthread.h>
+#include "thread_pool.h"
 
 #include "player.h"
 
@@ -9,7 +9,11 @@
 
 static RenderState render_state;
 
-pthread_mutex_t mutexes[SCREEN_HEIGHT];
+// Number of threads to use for rendering, therefore number of sections the screen is split into
+#define RENDER_THREAD_COUNT 4
+
+RenderSection render_sections[RENDER_THREAD_COUNT];
+ThreadPool thread_pool;
 
 #define SET_PIXEL(x, y, color) \
         render_state.pixels[((y) * SCREEN_WIDTH) + (x)] = (color);
@@ -90,17 +94,30 @@ RenderState *init_rendering(Window *window) {
 
     memset(render_state.depth_buffer, 0, sizeof(render_state.depth_buffer));
 
-    for(u32 i = 0; i < SCREEN_HEIGHT; i++) {
-        if(pthread_mutex_init(&mutexes[i], NULL) != 0) {
-            fprintf(stderr, "Failed to init mutex %u\n", i);
-            return NULL;
-        }
+    u32 section_height = floorf((f32) SCREEN_HEIGHT / RENDER_THREAD_COUNT);
+    u32 y = 0;
+    for(u32 i = 0; i < RENDER_THREAD_COUNT; i++) {
+        RenderSection section = { 0 };
+        section.bounds = (ivec4s) {
+            0,
+            y,
+            SCREEN_WIDTH - 1,
+            y + section_height - 1 >= SCREEN_HEIGHT ? y + section_height - 1 : SCREEN_HEIGHT - 1
+        };
+        y += section_height;
+
+        render_sections[i] = section;
     }
+
+    init_thread_pool(&thread_pool, RENDER_THREAD_COUNT);
 
     return &render_state;
 }
 
 void cleanup_rendering() {
+    thread_pool.active = false;
+    destroy_thread_pool(&thread_pool);
+
     SDL_DestroyTexture(render_state.texture);
     SDL_DestroyRenderer(render_state.renderer);
 }
@@ -109,6 +126,19 @@ void set_clear_color(u8 r, u8 g, u8 b, u8 a) {
     if(SDL_SetRenderDrawColor(render_state.renderer, r, g, b, a) != 0) {
         fprintf(stderr, "Failed to set clear color %x %x %x %x\n", r, g, b, a); 
     }
+}
+
+static void draw_render_section(RenderSection *section) {
+    for(u32 i = 0; i < section->triangle_list.count; i++) {
+        draw_triangle_raw(&section->triangle_list.parts[i], section->bounds, section->triangle_list.parts[i].texture);
+    }
+
+    section->triangle_list.count = 0;
+}
+
+static void draw_render_section_thread_func(void *arg) {
+    RenderSection *section = arg;
+    draw_render_section(section);
 }
 
 void present() {
@@ -272,6 +302,35 @@ void draw_triangles(
     }
 }
 
+static RenderSection *get_render_section(ivec2s coords) {
+    for(u32 i = 0; i < RENDER_THREAD_COUNT; i++) {
+        ivec4s bounds = render_sections[i].bounds;
+        if(coords.x >= bounds.x && coords.x <= bounds.z
+            && coords.y >= bounds.y && coords.y <= bounds.w) {
+            return &render_sections[i];
+        }
+    }
+    return NULL;
+}
+
+static void push_triangle_to_render_section(RenderSection *section, TrianglePart *triangle) {
+    if(!section->triangle_list.parts) {
+        section->triangle_list.parts = malloc(1024 * sizeof(TrianglePart));
+        section->triangle_list.allocated_size = 1024;
+    }
+
+    if(section->triangle_list.count >= section->triangle_list.allocated_size) {
+        section->triangle_list.parts =
+            realloc(
+                section->triangle_list.parts,
+                2 * section->triangle_list.allocated_size * sizeof(TrianglePart));
+        section->triangle_list.allocated_size *= 2;
+    }
+
+    section->triangle_list.parts[section->triangle_list.count] = *triangle;
+    section->triangle_list.count++;
+}
+
 void draw_triangle(const Vertex *vertices, const Texture *texture) {
     RawVertex raw_vertices[3];
 
@@ -315,25 +374,52 @@ void draw_triangle(const Vertex *vertices, const Texture *texture) {
         return;
     }
 
-    TrianglePart triangle_part;
-    memcpy(triangle_part.vertices, raw_vertices, sizeof(raw_vertices));
-    triangle_part.min_x = min_x;
-    triangle_part.max_x = max_x;
-    triangle_part.min_y = min_y;
-    triangle_part.max_y = max_y;
+    RenderSection *top_render_section = get_render_section((ivec2s) {0, min_y});
+    RenderSection *bottom_render_section = get_render_section((ivec2s) {0, max_y});
 
-    draw_triangle_raw(
-        &triangle_part,
-        texture);
+    // Triangle must be outside of screen for some reason, this shouldn't happen though
+    if(!top_render_section && !bottom_render_section) {
+        return;
+    }
+
+    if(top_render_section == bottom_render_section) {
+        // Triangle is in the same section
+        TrianglePart triangle_part;
+        memcpy(triangle_part.vertices, raw_vertices, sizeof(raw_vertices));
+        triangle_part.min_x = min_x;
+        triangle_part.max_x = max_x;
+        triangle_part.min_y = min_y;
+        triangle_part.max_y = max_y;
+        triangle_part.texture = texture;
+        push_triangle_to_render_section(top_render_section, &triangle_part);
+    } else {
+        // Triangle is split across multiple sections
+        for(u32 i = 0; i < RENDER_THREAD_COUNT; i++) {
+            RenderSection *section = &render_sections[i];
+            bool is_in_section = max_y >= section->bounds.y;
+            if(is_in_section) {
+                TrianglePart triangle_part;
+                memcpy(triangle_part.vertices, raw_vertices, sizeof(raw_vertices));
+                triangle_part.min_x = min_x;
+                triangle_part.max_x = max_x;
+                triangle_part.min_y = section->bounds.y;
+                triangle_part.max_y = max_y >= section->bounds.w ? section->bounds.w : max_y;
+                triangle_part.texture = texture;
+                
+                push_triangle_to_render_section(section, &triangle_part);
+            }
+        }
+    }
 }
 
-void draw_triangle_raw(const TrianglePart *part, const Texture *texture) {
+void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Texture *texture) {
     const i32 x1 = part->vertices[0].pos.x;
     const i32 x2 = part->vertices[1].pos.x;
     const i32 x3 = part->vertices[2].pos.x;
     const i32 y1 = part->vertices[0].pos.y;
     const i32 y2 = part->vertices[1].pos.y;
     const i32 y3 = part->vertices[2].pos.y;
+    // printf("drawing %i, %i, %i, %i, %i, %i\n", x1, y1, x2, y2, x3, y3);
     i32 z1 = part->vertices[0].pos.z;
     i32 z2 = part->vertices[1].pos.z;
     i32 z3 = part->vertices[2].pos.z;
@@ -360,10 +446,15 @@ void draw_triangle_raw(const TrianglePart *part, const Texture *texture) {
     }
     f32 inverse_area = 1.0f / (f32) area;
 
-    min_x = SDL_clamp(min_x, 0, SCREEN_WIDTH);
-    max_x = SDL_clamp(max_x, 0, SCREEN_WIDTH);
-    min_y = SDL_clamp(min_y, 0, SCREEN_HEIGHT);
-    max_y = SDL_clamp(max_y, 0, SCREEN_HEIGHT);
+    i32 section_min_x = section_bounds.x;
+    i32 section_min_y = section_bounds.y;
+    i32 section_max_x = section_bounds.z;
+    i32 section_max_y = section_bounds.w;
+
+    min_x = SDL_clamp(min_x, section_min_x, section_max_x + 1);
+    max_x = SDL_clamp(max_x, section_min_x, section_max_x + 1);
+    min_y = SDL_clamp(min_y, section_min_y, section_max_y + 1);
+    max_y = SDL_clamp(max_y, section_min_y, section_max_y + 1);
     z1 = SDL_clamp(z1, 0, DEPTH_PRECISION + 1);
     z2 = SDL_clamp(z2, 0, DEPTH_PRECISION + 1);
     z3 = SDL_clamp(z3, 0, DEPTH_PRECISION + 1);
@@ -411,14 +502,14 @@ void draw_triangle_raw(const TrianglePart *part, const Texture *texture) {
     const f32 brightness = part->vertices[0].brightness;
     const u32 fp_brightness = (1 << 10) * brightness;
 
-    for(i32 y = min_y; y < max_y; y++) {
+    for(i32 y = min_y; y <= max_y; y++) {
         i32 e1 = e_row1;
         i32 e2 = e_row2;
         i32 e3 = e_row3;
 
         __m128 v_raw_bc = v_raw_bc_row;
         i32 *depth_row = &render_state.depth_buffer[y * SCREEN_WIDTH];
-        for(i32 x = min_x; x < max_x; x++) {
+        for(i32 x = min_x; x <= max_x; x++) {
             if((e1 | e2 | e3) >= 0) {
                 __m128 v_bc = v_raw_bc;
                 f32 sum = hsum_ps_sse3(v_bc);
@@ -480,4 +571,16 @@ void draw_triangle_raw(const TrianglePart *part, const Texture *texture) {
         e_row3 += de3_row;
         v_raw_bc_row = _mm_add_ps(v_raw_bc_row, v_dbc_row);
     }
+}
+
+void draw_screen() {
+    pthread_mutex_lock(&thread_pool.mutex);
+    for(u32 i = 0; i < RENDER_THREAD_COUNT; i++) {
+        push_task(&thread_pool, draw_render_section_thread_func, &render_sections[i]);
+    }
+    pthread_mutex_unlock(&thread_pool.mutex);
+}
+
+void render_wait() {
+    thread_pool_wait(&thread_pool);
 }

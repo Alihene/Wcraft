@@ -49,9 +49,6 @@ int main() {
     u64 last_second = ns_now();
     u32 frames = 0;
 
-    ThreadPool thread_pool;
-    init_thread_pool(&thread_pool, 8);
-
     while(!state.quit) {
         window.mouse.movement = (vec2s) {0.0f, 0.0f};
 
@@ -90,12 +87,10 @@ int main() {
         update_keys(&window);
 
         update_camera(&player.camera, &window);
-        pthread_mutex_lock(&world->chunks_mutex);
         update_player(timestep, window.keys);
-        pthread_mutex_unlock(&world->chunks_mutex);
 
         update_world();
-
+        
         mat4s view = player.camera.view;
         mat4s proj = player.camera.proj;
 
@@ -113,6 +108,8 @@ int main() {
                         (vec3s) {chunk->pos.x * 16, 0, chunk->pos.y * 16}));
             }
         }
+        draw_screen();
+        
         frames++;
 
         u64 now = ns_now();
@@ -122,11 +119,9 @@ int main() {
             last_second = now;
         }
         
+        render_wait();
         present();
     }
-
-    thread_pool.active = false;
-    destroy_thread_pool(&thread_pool);
 
     destroy_world();
     cleanup_rendering();

@@ -9,7 +9,7 @@
 #define CHUNK_HEIGHT 32
 #define CHUNK_DEPTH 16
 
-#define LOAD_DISTANCE 6
+#define LOAD_DISTANCE 2
 // Side width of the square of loaded chunks
 #define LOAD_WIDTH (LOAD_DISTANCE * 2 + 1)
 
@@ -86,8 +86,6 @@ typedef struct {
         u32 count;
         u32 allocated;
     } chunk_storage;
-
-    pthread_mutex_t chunks_mutex;
 } World;
 
 void init_blocks();

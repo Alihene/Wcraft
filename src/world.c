@@ -782,11 +782,6 @@ World *init_world() {
 
     set_xorshift32_seed(1);
 
-    if(pthread_mutex_init(&world.chunks_mutex, NULL) != 0) {
-        fprintf(stderr, "Failed to create chunk mutex\n");
-        return NULL;
-    } 
-
     return &world;
 }
 
@@ -811,18 +806,15 @@ static Chunk *add_chunk(i32 x, i32 y) {
 }
 
 void update_world() {
-    pthread_mutex_lock(&world.chunks_mutex);
     load_chunks();
     for(u32 i = 0; i < world.chunk_count; i++) {
         Chunk *chunk = world.chunks[i];
         if(chunk->mesh.should_update) {
             mesh_chunk(chunk, true);
             mesh_chunk_neighbours(chunk);
-            pthread_mutex_unlock(&world.chunks_mutex);
             return;
         }
     }
-    pthread_mutex_unlock(&world.chunks_mutex);
 }
 
 void load_chunks() {

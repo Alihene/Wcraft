@@ -44,7 +44,21 @@ typedef struct {
     RawVertex vertices[3];
     i32 min_x, max_x;
     i32 min_y, max_y;
+    const Texture *texture;
 } TrianglePart;
+
+// Section of the screen to render
+typedef struct {
+    // x, y, x + width, y + width
+    ivec4s bounds;
+
+    // Arraylist of triangle parts
+    struct {
+        TrianglePart *parts;
+        u32 count;
+        u32 allocated_size;
+    } triangle_list;
+} RenderSection;
 
 RenderState *init_rendering(Window *window);
 
@@ -68,6 +82,9 @@ void draw_triangles(
     mat4s view,
     mat4s model);
 void draw_triangle(const Vertex *vertices, const Texture *texture);
-void draw_triangle_raw(const TrianglePart *part, const Texture *texture);
+void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Texture *texture);
+
+void draw_screen();
+void render_wait();
 
 #endif
