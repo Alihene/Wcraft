@@ -67,6 +67,7 @@ static void *thread_func(void *arg) {
         }
 
         pthread_mutex_lock(&pool->mutex);
+        pool->working_threads--;
         if(pool->active && pool->working_threads == 0 && !pool->last_task) {
             pthread_cond_signal(&pool->working_cond);
         }
@@ -85,6 +86,7 @@ void init_thread_pool(ThreadPool *thread_pool, u32 num_threads) {
     }
 
     thread_pool->num_threads = num_threads;
+    thread_pool->working_threads = 0;
     thread_pool->active = true;
 
     pthread_mutex_init(&thread_pool->mutex, NULL);
@@ -102,22 +104,6 @@ void init_thread_pool(ThreadPool *thread_pool, u32 num_threads) {
         }
         pthread_detach(thread_pool->threads[i]);
     }
-}
-
-static void pool_wait(ThreadPool *pool) {
-    if(!pool) {
-        return;
-    }
-
-    pthread_mutex_lock(&pool->mutex);
-    while(1) {
-        if(!pool->last_task || (pool->active && pool->working_threads != 0) || (!pool->active && pool->num_threads != 0)) {
-            pthread_cond_wait(&pool->working_cond, &pool->mutex);
-        } else {
-            break;
-        }
-    }
-    pthread_mutex_unlock(&pool->mutex);
 }
 
 void destroy_thread_pool(ThreadPool *pool) {
@@ -140,13 +126,14 @@ void destroy_thread_pool(ThreadPool *pool) {
     pthread_cond_broadcast(&pool->task_cond);
     pthread_mutex_unlock(&pool->mutex);
 
-    pool_wait(pool);
+    thread_pool_wait(pool);
 
     pthread_mutex_destroy(&pool->mutex);
     pthread_cond_destroy(&pool->task_cond);
     pthread_cond_destroy(&pool->working_cond);
 }
 
+// !!! NEEDS A LOCKED MUTEX !!!
 bool push_task(ThreadPool *pool, task_func func, void *arg) {
     Task *task;
 
@@ -159,7 +146,6 @@ bool push_task(ThreadPool *pool, task_func func, void *arg) {
         return false;
     }
 
-    pthread_mutex_lock(&pool->mutex);
     if(pool->first_task) {
         pool->first_task->next = task;
         pool->first_task = task;
@@ -169,7 +155,22 @@ bool push_task(ThreadPool *pool, task_func func, void *arg) {
     }
 
     pthread_cond_broadcast(&pool->task_cond);
-    pthread_mutex_unlock(&pool->mutex);
 
     return true;
+}
+
+void thread_pool_wait(ThreadPool *pool) {
+    if(!pool) {
+        return;
+    }
+
+    pthread_mutex_lock(&pool->mutex);
+    while(1) {
+        if(pool->last_task || (pool->active && pool->working_threads != 0) || (!pool->active && pool->num_threads != 0)) {
+            pthread_cond_wait(&pool->working_cond, &pool->mutex);
+        } else {
+            break;
+        }
+    }
+    pthread_mutex_unlock(&pool->mutex);
 }

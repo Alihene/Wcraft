@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <cglm/struct.h>
+#include <time.h>
 
 typedef int8_t i8;
 typedef int16_t i16;
@@ -41,6 +42,13 @@ inline f32 hsum_ps_sse3(__m128 v) {
     shuf = _mm_movehl_ps(shuf, sums);
     sums = _mm_add_ss(sums, shuf);
     return _mm_cvtss_f32(sums);
+}
+
+inline void sleep_ms(u64 ms) {
+    struct timespec ts;
+    ts.tv_sec = ms / 1000L;
+    ts.tv_nsec = (ms % 1000L) * 1000000L;
+    nanosleep(&ts, NULL);
 }
 
 #endif

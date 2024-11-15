@@ -19,32 +19,6 @@ struct {
     bool quit;
 } state;
 
-static void *render_chunks(void *arg) {
-    World *world = state.world;
-
-    while(true) {
-        pthread_mutex_lock(&world->chunks_mutex);
-        for(i32 i = 0; i < world->chunk_count; i++) {
-            Chunk *chunk = world->chunks[i];
-            if(chunk && !chunk->mesh.being_rendered) {
-                chunk->mesh.being_rendered = true;
-                draw_triangles(
-                    chunk->mesh.vertex_count / 3,
-                    chunk->mesh.vertices,
-                    state.atlas,
-                    player.camera.proj,
-                    player.camera.view,
-                    glms_translate(
-                        glms_mat4_identity(),
-                        (vec3s) {chunk->pos.x * 16, 0, chunk->pos.y * 16}));
-                chunk->mesh.being_rendered = false;
-            }
-        }
-        pthread_mutex_unlock(&world->chunks_mutex);
-    }
-    return NULL;
-}
-
 int main() {
     state.quit = false;
 
@@ -75,16 +49,8 @@ int main() {
     u64 last_second = ns_now();
     u32 frames = 0;
 
-    // pthread_t render_threads[1];
-    // for(i32 i = 0; i < 1; i++) {
-    //     if(pthread_create(&render_threads[i], NULL, render_chunks, NULL) != 0) {
-    //         printf("Failed\n");
-    //         return -1;
-    //     }
-    // }
-
     ThreadPool thread_pool;
-    init_thread_pool(&thread_pool, 2);
+    init_thread_pool(&thread_pool, 8);
 
     while(!state.quit) {
         window.mouse.movement = (vec2s) {0.0f, 0.0f};
@@ -133,7 +99,7 @@ int main() {
         mat4s view = player.camera.view;
         mat4s proj = player.camera.proj;
 
-        for(i32 i = 0; i < world->chunk_count; i++) {
+        for(u32 i = 0; i < world->chunk_count; i++) {
             Chunk *chunk = world->chunks[i];
             if(chunk) {
                 draw_triangles(
@@ -159,6 +125,7 @@ int main() {
         present();
     }
 
+    thread_pool.active = false;
     destroy_thread_pool(&thread_pool);
 
     destroy_world();

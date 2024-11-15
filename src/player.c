@@ -141,9 +141,6 @@ static void move_y(vec3s original_pos, f32 delta_y, f32 speed) {
 }
 
 void update_player(f32 timestep, const u8 *keys) {
-    i32 block_pos_x = floorf(player.pos.x);
-    i32 block_pos_y = floorf(player.pos.y);
-    i32 block_pos_z = floorf(player.pos.z);
     vec3s original_pos = player.pos;
 
     f32 speed = PLAYER_SPEED * timestep;
@@ -244,7 +241,7 @@ void try_break_block() {
 }
 
 void try_place_block() {
-    ivec3s place_pos;
+    ivec3s place_pos = {0};
     if(raycast(player.camera.front, 5, NULL, &place_pos)) {
         AABB player_aabb = (AABB) {
             .pos = (vec3s) {

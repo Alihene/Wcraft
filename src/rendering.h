@@ -40,6 +40,12 @@ typedef struct {
     f32 brightness;
 } RawVertex;
 
+typedef struct {
+    RawVertex vertices[3];
+    i32 min_x, max_x;
+    i32 min_y, max_y;
+} TrianglePart;
+
 RenderState *init_rendering(Window *window);
 
 void cleanup_rendering();
@@ -62,6 +68,6 @@ void draw_triangles(
     mat4s view,
     mat4s model);
 void draw_triangle(const Vertex *vertices, const Texture *texture);
-void draw_triangle_raw(RawVertex *vertices, const Texture *texture);
+void draw_triangle_raw(const TrianglePart *part, const Texture *texture);
 
 #endif

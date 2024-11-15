@@ -730,7 +730,7 @@ static void gen_chunk(Chunk *chunk) {
 
     for(u32 i = 0; i < tree_count; i++) {
         ivec3s pos = tree_positions[i];
-        for(u32 y = pos.y; y < pos.y + 6; y++) {
+        for(i32 y = pos.y; y < pos.y + 6; y++) {
             chunk_set(chunk, &blocks[BLOCK_LOG], pos.x, y, pos.z);
         }
 

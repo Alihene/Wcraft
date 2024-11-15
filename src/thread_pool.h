@@ -34,5 +34,6 @@ void destroy_task(Task *task);
 void init_thread_pool(ThreadPool *thread_pool, u32 num_threads);
 void destroy_thread_pool(ThreadPool *pool);
 bool push_task(ThreadPool *pool, task_func func, void *arg);
+void thread_pool_wait(ThreadPool *pool);
 
 #endif
