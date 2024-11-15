@@ -14,4 +14,4 @@ Software rendered minecraft clone that does not rely on libraries like OpenGL, D
 - [ ] Lighting
 - [ ] Day/night cycle
 - [x] Physics
-- [ ] Multithreaded rendering
+- [x] Multithreaded rendering
