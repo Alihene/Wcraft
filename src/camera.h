@@ -6,6 +6,9 @@
 #include "util.h"
 #include "window.h"
 
+// Vertical view angle
+#define CAMERA_FOV 80.0f
+
 typedef struct {
     vec3s pos;
     

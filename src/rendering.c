@@ -115,8 +115,6 @@ RenderState *init_rendering(Window *window) {
         }
         x += section_width;
 
-        printf("Made section with bounds %i, %i, %i, %i\n", section.bounds.x, section.bounds.y, section.bounds.z, section.bounds.w);
-
         render_sections[i] = section;
     }
 
@@ -309,6 +307,9 @@ void draw_triangles(
             if(local_vertices[j].w > 0.0f) {
                 draw[j] = true;
             }
+            // else {
+            //     printf("%f, %f, %f\n", local_vertices[j].pos.x, local_vertices[j].pos.y, local_vertices[j].pos.z);
+            // }
         }
         if(draw[0] && draw[1] && draw[2]) {
             sort_cw(local_vertices);
@@ -480,6 +481,7 @@ void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Te
     e_row2 = edge_function((ivec2s){x3, y3}, (ivec2s){x2, y2}, (ivec2s){min_x, min_y});
     e_row3 = edge_function((ivec2s){x2, y2}, (ivec2s){x1, y1}, (ivec2s){min_x, min_y});
 
+    // Edge function increments
     i32 de1_row = (x1 - x3);
     i32 de2_row = (x3 - x2);
     i32 de3_row = (x2 - x1);
@@ -487,6 +489,7 @@ void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Te
     i32 de2 = (y2 - y3);
     i32 de3 = (y1 - y2);
 
+    // Nonlinear z
     f32 z1f = (f32) z1 / (f32) DEPTH_PRECISION;
     f32 z2f = (f32) z2 / (f32) DEPTH_PRECISION;
     f32 z3f = (f32) z3 / (f32) DEPTH_PRECISION;
@@ -503,6 +506,7 @@ void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Te
     raw_bc_row.x = (f32) e_row2 * inverse_area * z1f / 2.0f;
     raw_bc_row.y = (f32) e_row3 * inverse_area * z3f / 2.0f;
     raw_bc_row.z = (f32) e_row1 * inverse_area * z2f / 2.0f;
+    // Barycentric coordinate increments
     const f32 du_row = (f32)((x3 - x2)) * inverse_area * z1f / 2.0f;
     const f32 dv_row = (f32)((x2 - x1)) * inverse_area * z3f / 2.0f;
     const f32 dw_row = (f32)((x1 - x3)) * inverse_area * z2f / 2.0f;
@@ -513,6 +517,8 @@ void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Te
     __m128 v_raw_bc_row = _mm_setr_ps(raw_bc_row.x, raw_bc_row.y, raw_bc_row.z, 0.0f);
     __m128 v_dbc_row = _mm_setr_ps(du_row, dv_row, dw_row, 0.0f);
     __m128 v_dbc = _mm_setr_ps(du, dv, dw, 0.0f);
+
+    // Since we are not interpolating brightness we can just take it from the first vertex
     const f32 brightness = part->vertices[0].brightness;
     const u32 fp_brightness = (1 << 10) * brightness;
 
@@ -531,7 +537,8 @@ void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Te
                 v_bc = _mm_mul_ps(v_bc, v_inverse_sum);
 
                 const __m128 v_depth = _mm_mul_ps(v_bc, v_z);
-                const i32 depth = hsum_ps_sse3(v_depth);
+                i32 depth = hsum_ps_sse3(v_depth);
+                depth = SDL_clamp(depth, 0, DEPTH_PRECISION);
 
                 // Don't do per-pixel calculations if the pixel isn't visible!
                 const i32 d = depth_row[x];

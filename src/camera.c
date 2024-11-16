@@ -38,5 +38,5 @@ void update_camera(Camera *camera, Window *window) {
     camera->up = (vec3s) {0.0f, 1.0f, 0.0f};
 
     camera->view = glms_lookat(camera->pos, glms_vec3_add(camera->pos, camera->front), camera->up);
-    camera->proj = glms_perspective(glm_rad(80.0f), aspect_ratio, 0.1f, 100.0f);
+    camera->proj = glms_perspective(glm_rad(CAMERA_FOV), aspect_ratio, 0.1f, 100.0f);
 }

@@ -12,6 +12,8 @@
 #include "player.h"
 #include "thread_pool.h"
 
+#define COS_40_DEG 0.766
+
 struct {
     RenderState *render_state;
     World *world;
@@ -97,7 +99,25 @@ int main() {
         for(u32 i = 0; i < world->chunk_count; i++) {
             Chunk *chunk = world->chunks[i];
             if(chunk) {
-                draw_triangles(
+                // Something resembling frustum culling
+                vec2s chunk_pos_xz = (vec2s) {chunk->pos.x * 16 - player.pos.x, chunk->pos.y * 16 - player.pos.z};
+                vec2s camera_front_xz = (vec2s) {player.camera.front.x, player.camera.front.z};
+
+                f32 dp1 = glms_vec2_dot(camera_front_xz, glms_vec2_normalize(chunk_pos_xz));
+                chunk_pos_xz.x += CHUNK_WIDTH;
+                f32 dp2 = glms_vec2_dot(camera_front_xz, glms_vec2_normalize(chunk_pos_xz));
+                chunk_pos_xz.y += CHUNK_DEPTH;
+                f32 dp3 = glms_vec2_dot(camera_front_xz, glms_vec2_normalize(chunk_pos_xz));
+                chunk_pos_xz.x -= CHUNK_WIDTH;
+                f32 dp4 = glms_vec2_dot(camera_front_xz, glms_vec2_normalize(chunk_pos_xz));
+
+                f32 horizontal_angle = cosf(CAMERA_FOV / 2) / ((f32) SCREEN_WIDTH / (f32) SCREEN_HEIGHT);
+
+                if(dp1 >= horizontal_angle
+                    || dp2 >= horizontal_angle
+                    || dp3 >= horizontal_angle
+                    || dp4 >= horizontal_angle) {
+                    draw_triangles(
                     chunk->mesh.vertex_count / 3,
                     chunk->mesh.vertices,
                     &texture,
@@ -106,6 +126,7 @@ int main() {
                     glms_translate(
                         glms_mat4_identity(),
                         (vec3s) {chunk->pos.x * 16, 0, chunk->pos.y * 16}));
+                }                
             }
         }
         draw_screen();
@@ -118,10 +139,7 @@ int main() {
             last_second = now;
         }
         
-        // u64 start = ns_now();
         render_wait();
-        // u64 end = ns_now();
-        // printf("Took %lu ns\n", end - start);
         present();
     }
 
