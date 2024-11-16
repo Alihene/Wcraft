@@ -24,6 +24,9 @@ typedef struct {
     u8 *data;
     u32 width;
     u32 height;
+
+    // Pixel size in UV coordinates
+    vec2s pixel_size;
 } Texture;
 
 typedef struct {

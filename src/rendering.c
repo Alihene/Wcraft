@@ -94,17 +94,28 @@ RenderState *init_rendering(Window *window) {
 
     memset(render_state.depth_buffer, 0, sizeof(render_state.depth_buffer));
 
-    u32 section_height = floorf((f32) SCREEN_HEIGHT / RENDER_THREAD_COUNT);
-    u32 y = 0;
+    u32 section_width = floorf((f32) SCREEN_WIDTH / RENDER_THREAD_COUNT);
+    u32 x = 0;
     for(u32 i = 0; i < RENDER_THREAD_COUNT; i++) {
         RenderSection section = { 0 };
-        section.bounds = (ivec4s) {
-            0,
-            y,
-            SCREEN_WIDTH - 1,
-            y + section_height - 1 >= SCREEN_HEIGHT ? y + section_height - 1 : SCREEN_HEIGHT - 1
-        };
-        y += section_height;
+        if(i < RENDER_THREAD_COUNT - 1) {
+            section.bounds = (ivec4s) {
+                x,
+                0,
+                x + section_width - 1,
+                SCREEN_HEIGHT - 1
+            };
+        } else {
+            section.bounds = (ivec4s) {
+                x,
+                0,
+                SCREEN_WIDTH - 1,
+                SCREEN_HEIGHT - 1
+            };
+        }
+        x += section_width;
+
+        printf("Made section with bounds %i, %i, %i, %i\n", section.bounds.x, section.bounds.y, section.bounds.z, section.bounds.w);
 
         render_sections[i] = section;
     }
@@ -177,6 +188,10 @@ Texture load_texture(const char *path) {
     texture.width = width;
     texture.height = height;
     texture.data = data;
+    texture.pixel_size = (vec2s) {
+        1.0f / texture.width,
+        1.0f / texture.height
+    };
     return texture;
 }
 
@@ -363,10 +378,10 @@ void draw_triangle(const Vertex *vertices, const Texture *texture) {
     i32 min_y = min(y1, y2, y3);
     i32 max_x = max(x1, x2, x3);
     i32 max_y = max(y1, y2, y3);
-    min_x = SDL_clamp(min_x, 0, SCREEN_WIDTH);
-    max_x = SDL_clamp(max_x, 0, SCREEN_WIDTH);
-    min_y = SDL_clamp(min_y, 0, SCREEN_HEIGHT);
-    max_y = SDL_clamp(max_y, 0, SCREEN_HEIGHT);
+    min_x = SDL_clamp(min_x, 0, SCREEN_WIDTH - 1);
+    max_x = SDL_clamp(max_x, 0, SCREEN_WIDTH - 1);
+    min_y = SDL_clamp(min_y, 0, SCREEN_HEIGHT - 1);
+    max_y = SDL_clamp(max_y, 0, SCREEN_HEIGHT - 1);
     i32 size_x = max_x - min_x;
     i32 size_y = max_y - min_y;
 
@@ -374,15 +389,15 @@ void draw_triangle(const Vertex *vertices, const Texture *texture) {
         return;
     }
 
-    RenderSection *top_render_section = get_render_section((ivec2s) {0, min_y});
-    RenderSection *bottom_render_section = get_render_section((ivec2s) {0, max_y});
+    RenderSection *left_render_section = get_render_section((ivec2s) {min_x, 0});
+    RenderSection *right_render_section = get_render_section((ivec2s) {max_x, 0});
 
     // Triangle must be outside of screen for some reason, this shouldn't happen though
-    if(!top_render_section && !bottom_render_section) {
+    if(!left_render_section || !right_render_section) {
         return;
     }
 
-    if(top_render_section == bottom_render_section) {
+    if(left_render_section == right_render_section) {
         // Triangle is in the same section
         TrianglePart triangle_part;
         memcpy(triangle_part.vertices, raw_vertices, sizeof(raw_vertices));
@@ -391,19 +406,19 @@ void draw_triangle(const Vertex *vertices, const Texture *texture) {
         triangle_part.min_y = min_y;
         triangle_part.max_y = max_y;
         triangle_part.texture = texture;
-        push_triangle_to_render_section(top_render_section, &triangle_part);
+        push_triangle_to_render_section(left_render_section, &triangle_part);
     } else {
         // Triangle is split across multiple sections
         for(u32 i = 0; i < RENDER_THREAD_COUNT; i++) {
             RenderSection *section = &render_sections[i];
-            bool is_in_section = max_y >= section->bounds.y;
+            bool is_in_section = max_x >= section->bounds.x && min_x <= section->bounds.z;
             if(is_in_section) {
                 TrianglePart triangle_part;
                 memcpy(triangle_part.vertices, raw_vertices, sizeof(raw_vertices));
-                triangle_part.min_x = min_x;
-                triangle_part.max_x = max_x;
-                triangle_part.min_y = section->bounds.y;
-                triangle_part.max_y = max_y >= section->bounds.w ? section->bounds.w : max_y;
+                triangle_part.min_x = section->bounds.x;
+                triangle_part.max_x = max_x >= section->bounds.z ? section->bounds.z : max_x;
+                triangle_part.min_y = min_y;
+                triangle_part.max_y = max_y;
                 triangle_part.texture = texture;
                 
                 push_triangle_to_render_section(section, &triangle_part);
@@ -419,7 +434,6 @@ void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Te
     const i32 y1 = part->vertices[0].pos.y;
     const i32 y2 = part->vertices[1].pos.y;
     const i32 y3 = part->vertices[2].pos.y;
-    // printf("drawing %i, %i, %i, %i, %i, %i\n", x1, y1, x2, y2, x3, y3);
     i32 z1 = part->vertices[0].pos.z;
     i32 z2 = part->vertices[1].pos.z;
     i32 z3 = part->vertices[2].pos.z;
@@ -429,8 +443,8 @@ void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Te
     const vec2s uv3 = part->vertices[2].uv;
     const f32 min_uvx = SDL_min(uv1.x, SDL_min(uv2.x, uv3.x));
     const f32 min_uvy = SDL_min(uv1.y, SDL_min(uv2.y, uv3.y));
-    const f32 max_uvx = SDL_max(uv1.x, SDL_max(uv2.x, uv3.x)) - 0.0078125f;
-    const f32 max_uvy = SDL_max(uv1.y, SDL_max(uv2.y, uv3.y)) - 0.0078125f;
+    const f32 max_uvx = SDL_max(uv1.x, SDL_max(uv2.x, uv3.x)) - texture->pixel_size.x;
+    const f32 max_uvy = SDL_max(uv1.y, SDL_max(uv2.y, uv3.y)) - texture->pixel_size.y;
 
     const __m128 v_uv_x = _mm_setr_ps(uv1.x, uv3.x, uv2.x, 0.0f);
     const __m128 v_uv_y = _mm_setr_ps(uv1.y, uv3.y, uv2.y, 0.0f);
@@ -451,13 +465,13 @@ void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Te
     i32 section_max_x = section_bounds.z;
     i32 section_max_y = section_bounds.w;
 
-    min_x = SDL_clamp(min_x, section_min_x, section_max_x + 1);
-    max_x = SDL_clamp(max_x, section_min_x, section_max_x + 1);
-    min_y = SDL_clamp(min_y, section_min_y, section_max_y + 1);
-    max_y = SDL_clamp(max_y, section_min_y, section_max_y + 1);
-    z1 = SDL_clamp(z1, 0, DEPTH_PRECISION + 1);
-    z2 = SDL_clamp(z2, 0, DEPTH_PRECISION + 1);
-    z3 = SDL_clamp(z3, 0, DEPTH_PRECISION + 1);
+    min_x = SDL_clamp(min_x, section_min_x, section_max_x);
+    max_x = SDL_clamp(max_x, section_min_x, section_max_x);
+    min_y = SDL_clamp(min_y, section_min_y, section_max_y);
+    max_y = SDL_clamp(max_y, section_min_y, section_max_y);
+    z1 = SDL_clamp(z1, 0, DEPTH_PRECISION);
+    z2 = SDL_clamp(z2, 0, DEPTH_PRECISION);
+    z3 = SDL_clamp(z3, 0, DEPTH_PRECISION);
 
     __m128 v_z = _mm_setr_ps(z1, z3, z2, 0.0f);
 

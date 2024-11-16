@@ -111,7 +111,6 @@ int main() {
         draw_screen();
         
         frames++;
-
         u64 now = ns_now();
         if(now - last_second > NS_PER_SECOND) {
             printf("FPS: %u\n", frames);
@@ -119,7 +118,10 @@ int main() {
             last_second = now;
         }
         
+        // u64 start = ns_now();
         render_wait();
+        // u64 end = ns_now();
+        // printf("Took %lu ns\n", end - start);
         present();
     }
 
