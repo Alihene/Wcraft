@@ -10,7 +10,7 @@
 #define SCREEN_WIDTH 427
 #define SCREEN_HEIGHT 240
 
-#define DEPTH_PRECISION (1 << 20)
+#define DEPTH_PRECISION (1 << 16)
 
 typedef struct {
     SDL_Surface *surface;

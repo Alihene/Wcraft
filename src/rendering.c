@@ -10,7 +10,7 @@
 static RenderState render_state;
 
 // Number of threads to use for rendering, therefore number of sections the screen is split into
-#define RENDER_THREAD_COUNT 4
+#define RENDER_THREAD_COUNT 16
 
 RenderSection render_sections[RENDER_THREAD_COUNT];
 ThreadPool thread_pool;
@@ -46,7 +46,7 @@ static ivec3s ndc_to_pixels(vec3s ndc) {
     return (ivec3s) {
         ((ndc.x + 1.0f) / 2.0f) * (SCREEN_WIDTH),
         (1.0f - ((ndc.y + 1.0f) / 2.0f)) * (SCREEN_HEIGHT),
-        SDL_clamp(ndc.z * DEPTH_PRECISION, 0, DEPTH_PRECISION)
+        ndc.z * DEPTH_PRECISION
     };
 }
 
@@ -304,12 +304,9 @@ void draw_triangles(
             local_vertices[j].w = v.w;
 
             // Hack to stop segfaults - NEEDS PROPER FIXING
-            if(local_vertices[j].w > 0.0f) {
+            if(local_vertices[j].pos.z > 0.0f && local_vertices[j].pos.z <= 1.0f) {
                 draw[j] = true;
             }
-            // else {
-            //     printf("%f, %f, %f\n", local_vertices[j].pos.x, local_vertices[j].pos.y, local_vertices[j].pos.z);
-            // }
         }
         if(draw[0] && draw[1] && draw[2]) {
             sort_cw(local_vertices);
@@ -375,6 +372,7 @@ void draw_triangle(const Vertex *vertices, const Texture *texture) {
     const i32 y1 = raw_vertices[0].pos.y;
     const i32 y2 = raw_vertices[1].pos.y;
     const i32 y3 = raw_vertices[2].pos.y;
+
     i32 min_x = min(x1, x2, x3);
     i32 min_y = min(y1, y2, y3);
     i32 max_x = max(x1, x2, x3);
@@ -489,30 +487,24 @@ void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Te
     i32 de2 = (y2 - y3);
     i32 de3 = (y1 - y2);
 
-    // Nonlinear z
-    f32 z1f = (f32) z1 / (f32) DEPTH_PRECISION;
-    f32 z2f = (f32) z2 / (f32) DEPTH_PRECISION;
-    f32 z3f = (f32) z3 / (f32) DEPTH_PRECISION;
-    z1f *= part->vertices[0].w;
-    z2f *= part->vertices[1].w;
-    z3f *= part->vertices[2].w;
-    z1f = 1.0f / z1f;
-    z2f = 1.0f / z2f;
-    z3f = 1.0f / z3f;
+    // Inverse homogenous coordinates
+    f32 inv_w1 = 1.0f / part->vertices[0].w;
+    f32 inv_w2 = 1.0f / part->vertices[1].w;
+    f32 inv_w3 = 1.0f / part->vertices[2].w;
 
     vec2s tex_coords;
 
     vec3s raw_bc_row;
-    raw_bc_row.x = (f32) e_row2 * inverse_area * z1f / 2.0f;
-    raw_bc_row.y = (f32) e_row3 * inverse_area * z3f / 2.0f;
-    raw_bc_row.z = (f32) e_row1 * inverse_area * z2f / 2.0f;
+    raw_bc_row.x = (f32) e_row2 * inverse_area * inv_w1 / 2.0f;
+    raw_bc_row.y = (f32) e_row3 * inverse_area * inv_w3 / 2.0f;
+    raw_bc_row.z = (f32) e_row1 * inverse_area * inv_w2 / 2.0f;
     // Barycentric coordinate increments
-    const f32 du_row = (f32)((x3 - x2)) * inverse_area * z1f / 2.0f;
-    const f32 dv_row = (f32)((x2 - x1)) * inverse_area * z3f / 2.0f;
-    const f32 dw_row = (f32)((x1 - x3)) * inverse_area * z2f / 2.0f;
-    const f32 du = (f32)((y2 - y3)) * inverse_area * z1f / 2.0f;
-    const f32 dv = (f32)((y1 - y2)) * inverse_area * z3f / 2.0f;
-    const f32 dw = (f32)((y3 - y1)) * inverse_area * z2f / 2.0f;
+    const f32 du_row = (f32)((x3 - x2)) * inverse_area * inv_w1 / 2.0f;
+    const f32 dv_row = (f32)((x2 - x1)) * inverse_area * inv_w3 / 2.0f;
+    const f32 dw_row = (f32)((x1 - x3)) * inverse_area * inv_w2 / 2.0f;
+    const f32 du = (f32)((y2 - y3)) * inverse_area * inv_w1 / 2.0f;
+    const f32 dv = (f32)((y1 - y2)) * inverse_area * inv_w3 / 2.0f;
+    const f32 dw = (f32)((y3 - y1)) * inverse_area * inv_w2 / 2.0f;
 
     __m128 v_raw_bc_row = _mm_setr_ps(raw_bc_row.x, raw_bc_row.y, raw_bc_row.z, 0.0f);
     __m128 v_dbc_row = _mm_setr_ps(du_row, dv_row, dw_row, 0.0f);
@@ -538,11 +530,10 @@ void draw_triangle_raw(const TrianglePart *part, ivec4s section_bounds, const Te
 
                 const __m128 v_depth = _mm_mul_ps(v_bc, v_z);
                 i32 depth = hsum_ps_sse3(v_depth);
-                depth = SDL_clamp(depth, 0, DEPTH_PRECISION);
 
                 // Don't do per-pixel calculations if the pixel isn't visible!
                 const i32 d = depth_row[x];
-                if(d <= 0 || depth <= d) {
+                if((depth > 0 && depth <= DEPTH_PRECISION) && (d == 0 || depth <= d)) {
                     tex_coords.x = hsum_ps_sse3(_mm_mul_ps(v_bc, v_uv_x));
                     tex_coords.y = hsum_ps_sse3(_mm_mul_ps(v_bc, v_uv_y));
 
