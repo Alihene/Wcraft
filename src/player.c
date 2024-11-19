@@ -12,7 +12,7 @@
 
 // In m/s
 #define JUMP_VELOCITY 7.0f
-#define PLAYER_SPEED 3.5f
+#define PLAYER_SPEED 10.0f
 
 #define MOVEMENT_EPSILON 0.01f
 
@@ -20,7 +20,7 @@ Player player;
 
 void init_player() {
     player.camera = (Camera) {0};
-    player.pos = (vec3s) {0.0f, 20.0f, 0.0f};
+    player.pos = (vec3s) {0.0f, 100.0f, 0.0f};
     player.hotbar_slot = 1;
     player.y_velocity = 0.0f;
     player.on_ground = false;

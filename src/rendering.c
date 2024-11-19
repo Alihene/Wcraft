@@ -266,6 +266,33 @@ static i32 edge_function(ivec2s a, ivec2s b, ivec2s c) {
     return ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x));
 }
 
+static bool is_vertex_visible(const Vertex *vertex) {
+    return fabsf(vertex->pos.z) <= vertex->w;
+}
+
+// Returns true if FULLY visible
+static bool is_triangle_visible(Vertex *vertices) {
+    bool visible[3] = {false};
+
+    for(u32 i = 0; i < 3; i++) {
+        Vertex *vertex = &vertices[i];
+        if(is_vertex_visible(vertex)) {
+            visible[i] = true;
+        }
+    }
+
+    return visible[0] && visible[1] && visible[2];
+}
+
+static void clip_triangle(Vertex *vertices) {
+    // TODO: actually make this a real algorithm
+
+    for(u32 i = 0; i < 3; i++) {
+        Vertex *vertex = &vertices[i];
+        vertex->pos.z = SDL_clamp(vertex->pos.z, 0.0f, fabsf(vertex->w));
+    }
+}
+
 void draw_triangles(
     u32 count,
     const Vertex *vertices,
@@ -286,7 +313,6 @@ void draw_triangles(
             && player.camera.pos.y >= 0.0f) {
             continue;
         }
-        bool draw[3] = { false, false, false };
 
         for(u32 j = 0; j < 3; j++) {
             vec4s v =
@@ -297,18 +323,27 @@ void draw_triangles(
                         local_vertices[j].pos.y,
                         local_vertices[j].pos.z,
                         local_vertices[j].w});
-            
-            local_vertices[j].pos.x = v.w == 0.0f ? 0.0f : v.x / v.w;
-            local_vertices[j].pos.y = v.w == 0.0f ? 0.0f : v.y / v.w;
-            local_vertices[j].pos.z = v.w == 0.0f ? 0.0f : v.z / v.w;
-            local_vertices[j].w = v.w;
 
-            // Hack to stop segfaults - NEEDS PROPER FIXING
-            if(local_vertices[j].pos.z > 0.0f && local_vertices[j].pos.z <= 1.0f) {
-                draw[j] = true;
-            }
+            local_vertices[j].pos.x = v.x;
+            local_vertices[j].pos.y = v.y;
+            local_vertices[j].pos.z = v.z;
+            local_vertices[j].w = v.w;
         }
-        if(draw[0] && draw[1] && draw[2]) {
+
+        if(is_triangle_visible(local_vertices)) {
+            clip_triangle(local_vertices);
+
+            for(u32 j = 0; j < 3; j++) {
+                vec4s v = (vec4s) {
+                    local_vertices[j].pos.x,
+                    local_vertices[j].pos.y,
+                    local_vertices[j].pos.z,
+                    local_vertices[j].w};
+                local_vertices[j].pos.x = v.w == 0.0f ? 0.0f : v.x / v.w;
+                local_vertices[j].pos.y = v.w == 0.0f ? 0.0f : v.y / v.w;
+                local_vertices[j].pos.z = v.w == 0.0f ? 0.0f : v.z / v.w;
+            }
+
             sort_cw(local_vertices);
             draw_triangle(local_vertices, texture);
         }

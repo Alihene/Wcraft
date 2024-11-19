@@ -708,8 +708,8 @@ static void gen_chunk(Chunk *chunk) {
         for(u8 z = 0; z < CHUNK_DEPTH; z++) {
             f32 a = perlin(
                 (i32)(x + chunk->pos.x * 16) + INT16_MAX,
-                (i32)(z + chunk->pos.y * 16) + INT16_MAX, 0.02f, 16);
-            i32 h = a * 31.0f;
+                (i32)(z + chunk->pos.y * 16) + INT16_MAX, 0.005f, 8);
+            i32 h = a * 100.0f;
             for(i32 y = 0; y <= h; y++) {
                 if(y == h) {
                     chunk_set(chunk, &blocks[BLOCK_GRASS], x, y, z);
@@ -818,8 +818,8 @@ void update_world() {
 }
 
 void load_chunks() {
-    i32 chunk_pos_x = player.pos.x / CHUNK_WIDTH;
-    i32 chunk_pos_z = player.pos.z / CHUNK_DEPTH;
+    i32 chunk_pos_x = floorf(player.pos.x / CHUNK_WIDTH);
+    i32 chunk_pos_z = floorf(player.pos.z / CHUNK_DEPTH);
 
     // Indices of chunks to remove
     i32 chunks_to_remove[SQ(LOAD_WIDTH)];
